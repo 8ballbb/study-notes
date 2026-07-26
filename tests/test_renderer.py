@@ -58,3 +58,59 @@ def test_render_update_section_is_dated():
     section = render_update_section(_topic(), on=date(2026, 7, 26))
     assert section.startswith("## Update (2026-07-26)")
     assert "What is a term in Raft?" in section
+
+
+def test_frontmatter_quotes_title_with_colon():
+    topic = _topic()
+    topic.title = "Raft: In Search of an Understandable Consensus Algorithm"
+    md = render_note(topic, category="Distributed Systems")
+    assert 'title: "Raft: In Search of an Understandable Consensus Algorithm"' in md
+
+
+def test_frontmatter_source_date_none_has_no_trailing_space():
+    topic = _topic()
+    topic.provenance = Provenance(origin=topic.provenance.origin,
+                                  input_type=topic.provenance.input_type,
+                                  captured_at=topic.provenance.captured_at,
+                                  source_date=None)
+    md = render_note(topic, category="Distributed Systems")
+    assert "source_date:\n" in md
+    assert "source_date: \n" not in md
+
+
+def test_render_card_multiline_without_frame():
+    c = Card("Q?", "line one\nline two")
+    assert render_card(c) == "Q?\n?\nline one\nline two"
+
+
+def test_render_note_exact_output():
+    prov = Provenance(origin="http://example.com", input_type="manual",
+                      captured_at=date(2026, 1, 1), source_date=date(2026, 1, 2))
+    topic = Topic(
+        title="Test Note",
+        tags=["a", "b"],
+        summary=["First idea."],
+        cards=[Card("Q1", "A1")],
+        provenance=prov,
+    )
+    md = render_note(topic, category="General")
+    expected = (
+        "---\n"
+        "title: Test Note\n"
+        "category: General\n"
+        "type: study-note\n"
+        "tags: [a, b]\n"
+        "source: http://example.com\n"
+        "source_type: manual\n"
+        "source_date: 2026-01-02\n"
+        "captured_at: 2026-01-01\n"
+        "supersedes: []\n"
+        "---\n"
+        "\n"
+        "## Core ideas\n"
+        "- First idea.\n"
+        "\n"
+        "## Study cards\n"
+        "Q1::A1\n"
+    )
+    assert md == expected

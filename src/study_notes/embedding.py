@@ -26,7 +26,7 @@ class FakeEmbedder:
 
 
 class BGEM3Embedder:
-    """Real BGE-M3 dense embedder via FlagEmbedding (MPS/fp16). Lazily loaded."""
+    """Real BGE-M3 dense embedder via FlagEmbedding (fp16; device auto-selected by FlagEmbedding). Lazily loaded."""
 
     def __init__(self, model_name: str = "BAAI/bge-m3") -> None:
         self.model_name = model_name

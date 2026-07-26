@@ -13,17 +13,35 @@ def render_card(card: Card, frame_path: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def _yaml_scalar(value: str) -> str:
+    """Quote a YAML scalar only when needed, so normal values stay unquoted."""
+    needs_quote = (
+        value == ""
+        or value != value.strip()
+        or value[0] in "!&*?|>%@`\"'#[]{},"
+        or ": " in value
+        or value.endswith(":")
+        or "#" in value
+        or '"' in value
+        or "\n" in value
+    )
+    if not needs_quote:
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def _frontmatter(topic: Topic, category: str) -> str:
     p = topic.provenance
     rows = [
         "---",
-        f"title: {topic.title}",
-        f"category: {category}",
+        f"title: {_yaml_scalar(topic.title)}",
+        f"category: {_yaml_scalar(category)}",
         "type: study-note",
         f"tags: [{', '.join(topic.tags)}]",
         f"source: {p.origin}",
         f"source_type: {p.input_type}",
-        f"source_date: {p.source_date.isoformat() if p.source_date else ''}",
+        f"source_date: {p.source_date.isoformat()}" if p.source_date else "source_date:",
         f"captured_at: {p.captured_at.isoformat()}",
         "supersedes: []",
         "---",
