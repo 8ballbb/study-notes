@@ -1,0 +1,23 @@
+vault_path = "/tmp/vault"
+notes_root = "04 - Resources"
+attachments_dir = "06 - Attachments"
+frames_subdir = "frames"
+
+[database]
+url = "postgresql://localhost/study_notes_test"
+
+[embedding]
+model = "BAAI/bge-m3"
+
+[models]
+segment = "claude-haiku-4-5"
+extract = "claude-fable-5"
+categorize = "claude-opus-4-8"
+
+[prompts]
+segment = "prompts/segment.md"
+extract = "prompts/extract.md"
+categorize = "prompts/categorize.md"
+
+[run]
+dry_run = false
