@@ -6,11 +6,14 @@
 
 **Architecture:** Tool *logic* lives in plain, directly-testable functions under `src/study_notes/tools/`; the MCP server (`mcp_server.py`) is a thin adapter that wires config + a shared `VaultIndex` and registers each function as an `@mcp.tool()`. Network/binary-dependent pieces (yt-dlp, ffmpeg) are split into a pure, unit-tested core (VTT parsing, path/MOC logic) plus a thin integration wrapper, so most tests run offline and deterministically.
 
-**Tech Stack:** Python 3.12+, `mcp` (official SDK, `FastMCP`, pinned `<2`), `yt-dlp`, `ffmpeg` (system binary), plus Plan 1's `psycopg`/`pgvector`/`FlagEmbedding`. Builds on `study_notes.{config,models,renderer,embedding,db,vault_index}`.
+**Tech Stack:** Python 3.12+, `mcp` (official SDK, `FastMCP`, pinned `<2`), `yt-dlp` (pip; pure Python), **ffmpeg run via Docker** (`jrottenberg/ffmpeg:6.1-alpine`, throwaway `docker run`), plus Plan 1's `psycopg`/`pgvector`/`FlagEmbedding`. Builds on `study_notes.{config,models,renderer,embedding,db,vault_index}`.
+
+**Runtime topology (important):** The Python app runs **on the host**, not in a container — BGE-M3 uses Apple **MPS (GPU)**, which Docker on Mac cannot access. Only *services/binaries* are containerized: Postgres (Plan 1) and ffmpeg (this plan). ffmpeg runs as a throwaway `docker run --rm` with a bind mount; **Colima only mounts paths under the user's home dir**, so all ffmpeg file I/O (the vault frames dir, test work dirs) must live under `$HOME` — a macOS temp dir like `/var/folders/...` (pytest's `tmp_path`) will NOT mount. This is validated behavior on this machine.
 
 ## Global Constraints
 
 - Python 3.12+; macOS/arm64.
+- **ffmpeg runs via Docker, never a host install** — throwaway `docker run --rm -v <workdir>:/work jrottenberg/ffmpeg:6.1-alpine ...`. The app itself stays on the host (MPS). All ffmpeg file I/O must be under a Colima-mounted path (`$HOME`); temp dirs under `/var/folders/...` do NOT mount, so ffmpeg-touching tests use a work dir under the repo, not `tmp_path`.
 - MCP server uses `from mcp.server.fastmcp import FastMCP`; pin `mcp>=1.2,<2` (a v2 rework lands ~2026-07-27; avoid the churn).
 - Transcripts via **yt-dlp in VTT format** (not json3 — it has `_UnsafeExtensionError` bugs in 2026). Timestamps preserved as `"HH:MM:SS"`.
 - **Retrieval stays category-scoped** — `vault_search` must pass a category through to `VaultIndex.find_related`; never expose an unscoped search.
@@ -323,30 +326,43 @@ git commit -m "feat: fetch_youtube_transcript via yt-dlp (VTT + metadata)"
 
 ---
 
-### Task 3: Frame extraction (`extract_frame` via ffmpeg)
+### Task 3: Frame extraction (`extract_frame` via Docker ffmpeg)
 
 **Files:**
 - Create: `src/study_notes/tools/frames.py`
 - Create: `tests/tools/test_frames.py`
-- Modify: `README-dev.md` (note the ffmpeg system dependency)
+- Modify: `README-dev.md` (Docker ffmpeg note)
+- Modify: `.gitignore` (test work dir)
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces:
   - `frame_filename(prefix: str, timestamp: str) -> str` — pure; e.g. `("raft", "00:14:32") -> "raft_00-14-32.jpg"`.
-  - `extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path` — runs ffmpeg to grab one frame at `timestamp`; raises `FrameExtractionError` on ffmpeg failure. Returns `out_path`.
-  - `download_video(url: str, out_dir: Path) -> Path` — yt-dlp download of the video (used later by the MCP tool); returns the file path.
+  - `_docker_ffmpeg(work_dir: Path, args: list[str]) -> subprocess.CompletedProcess` — runs ffmpeg in a throwaway container with `work_dir` bind-mounted at `/work`.
+  - `extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path` — grabs one frame at `timestamp` via Docker ffmpeg. **Requires `video_path` and `out_path` to share a parent directory** (single Docker mount) that lives under a Colima-mounted path (`$HOME`). Raises `FrameExtractionError` on failure. Returns `out_path`.
+  - `download_video(url: str, out_dir: Path) -> Path` — yt-dlp download (host, pure Python; single mp4 stream so no ffmpeg merge needed). Returns the file path.
 
-- [ ] **Step 1: Document the ffmpeg dependency**
+**Note on I/O location:** because Colima only mounts `$HOME`, the caller must pass paths under the home dir (the real vault frames dir qualifies). Tests therefore use a work dir under the repo (`tests/.work/...`), never `tmp_path`.
+
+- [ ] **Step 1: Document the Docker ffmpeg dependency + ignore test work dir**
 
 Append to `README-dev.md`:
 ```markdown
 
-## ffmpeg (frame extraction)
+## ffmpeg (frame extraction) — via Docker
 
-    brew install ffmpeg      # system binary used by extract_frame
+ffmpeg runs in a throwaway container (no host install). Pre-pull the image:
 
-Tests that touch ffmpeg are marked `ffmpeg` and generate their own sample clip.
+    docker pull jrottenberg/ffmpeg:6.1-alpine
+
+Because Colima only mounts your home directory, frame I/O must live under
+`$HOME` (the vault frames dir does). Tests that touch ffmpeg are marked
+`docker` and use a work dir under the repo.
+```
+
+Add to `.gitignore`:
+```gitignore
+tests/.work/
 ```
 
 - [ ] **Step 2: Write the failing test**
@@ -354,48 +370,66 @@ Tests that touch ffmpeg are marked `ffmpeg` and generate their own sample clip.
 `tests/tools/test_frames.py`:
 ```python
 import shutil
-import subprocess
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
-from study_notes.tools.frames import FrameExtractionError, extract_frame, frame_filename
+from study_notes.tools.frames import (
+    FrameExtractionError,
+    _docker_ffmpeg,
+    extract_frame,
+    frame_filename,
+)
 
 
 def test_frame_filename_slugifies_timestamp():
     assert frame_filename("raft", "00:14:32") == "raft_00-14-32.jpg"
 
 
-needs_ffmpeg = pytest.mark.skipif(
-    shutil.which("ffmpeg") is None, reason="ffmpeg not installed"
+needs_docker = pytest.mark.skipif(
+    shutil.which("docker") is None, reason="docker not installed"
 )
 
 
 @pytest.fixture
-def sample_video(tmp_path):
-    out = tmp_path / "sample.mp4"
-    subprocess.run(
-        ["ffmpeg", "-f", "lavfi", "-i",
-         "testsrc=duration=2:size=320x240:rate=10", str(out), "-y"],
-        check=True, capture_output=True,
-    )
-    return out
+def work_dir():
+    # Must be under the repo ($HOME) so Colima can bind-mount it — NOT tmp_path.
+    d = Path("tests/.work") / uuid4().hex
+    d.mkdir(parents=True)
+    yield d
+    shutil.rmtree(d, ignore_errors=True)
 
 
-@pytest.mark.ffmpeg
-@needs_ffmpeg
-def test_extract_frame_writes_image(sample_video, tmp_path):
-    out = tmp_path / "frame.jpg"
+@pytest.fixture
+def sample_video(work_dir):
+    _docker_ffmpeg(work_dir, [
+        "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=10",
+        "/work/sample.mp4", "-y",
+    ])
+    return work_dir / "sample.mp4"
+
+
+@pytest.mark.docker
+@needs_docker
+def test_extract_frame_writes_image(sample_video, work_dir):
+    out = work_dir / "frame.jpg"
     result = extract_frame(sample_video, "00:00:01", out)
     assert result == out
     assert out.exists() and out.stat().st_size > 0
 
 
-@pytest.mark.ffmpeg
-@needs_ffmpeg
-def test_extract_frame_bad_input_raises(tmp_path):
+@pytest.mark.docker
+@needs_docker
+def test_extract_frame_bad_input_raises(work_dir):
     with pytest.raises(FrameExtractionError):
-        extract_frame(tmp_path / "nope.mp4", "00:00:01", tmp_path / "out.jpg")
+        extract_frame(work_dir / "nope.mp4", "00:00:01", work_dir / "out.jpg")
+
+
+def test_extract_frame_requires_shared_dir(tmp_path):
+    # video and output in different dirs -> rejected before touching docker
+    with pytest.raises(FrameExtractionError):
+        extract_frame(tmp_path / "a" / "v.mp4", "00:00:01", tmp_path / "b" / "f.jpg")
 ```
 
 - [ ] **Step 3: Run test to verify it fails**
@@ -410,22 +444,34 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'study_notes.tools.fra
 import subprocess
 from pathlib import Path
 
+FFMPEG_IMAGE = "jrottenberg/ffmpeg:6.1-alpine"
+
 
 class FrameExtractionError(Exception):
-    """ffmpeg could not extract the requested frame."""
+    """Docker ffmpeg could not extract the requested frame."""
 
 
 def frame_filename(prefix: str, timestamp: str) -> str:
     return f"{prefix}_{timestamp.replace(':', '-')}.jpg"
 
 
-def extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(
-        ["ffmpeg", "-ss", timestamp, "-i", str(video_path),
-         "-frames:v", "1", "-q:v", "2", str(out_path), "-y"],
+def _docker_ffmpeg(work_dir: Path, args: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["docker", "run", "--rm", "-v", f"{work_dir}:/work", FFMPEG_IMAGE, *args],
         capture_output=True,
     )
+
+
+def extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path:
+    if video_path.parent != out_path.parent:
+        raise FrameExtractionError(
+            "video_path and out_path must share a directory (single Docker mount)"
+        )
+    work = video_path.parent
+    proc = _docker_ffmpeg(work, [
+        "-ss", timestamp, "-i", f"/work/{video_path.name}",
+        "-frames:v", "1", "-q:v", "2", f"/work/{out_path.name}", "-y",
+    ])
     if proc.returncode != 0 or not out_path.exists():
         raise FrameExtractionError(
             f"ffmpeg failed for {video_path} @ {timestamp}: "
@@ -439,7 +485,8 @@ def download_video(url: str, out_dir: Path) -> Path:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     opts = {
-        "format": "mp4/bestvideo[ext=mp4]/best",
+        # single progressive mp4 stream -> no ffmpeg merge step needed
+        "format": "best[ext=mp4]/mp4/best",
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
@@ -452,20 +499,20 @@ def download_video(url: str, out_dir: Path) -> Path:
     return matches[0]
 ```
 
-- [ ] **Step 5: Register the `ffmpeg` marker and run**
+- [ ] **Step 5: Register the `docker` marker and run**
 
 In `pyproject.toml` markers, add:
 ```toml
-    "ffmpeg: requires the ffmpeg binary and generates a sample clip",
+    "docker: requires a running Docker daemon (Colima) for ffmpeg",
 ```
 Run: `uv run pytest tests/tools/test_frames.py -v`
-Expected: PASS (3 passed if ffmpeg installed; the 2 ffmpeg tests skip if not). Install with `brew install ffmpeg` to run them.
+Expected: PASS (4 passed if Docker is up and `jrottenberg/ffmpeg:6.1-alpine` is pullable; the 2 `docker` tests skip if docker is absent). `test_frame_filename_slugifies_timestamp` and `test_extract_frame_requires_shared_dir` always run.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/study_notes/tools/frames.py tests/tools/test_frames.py README-dev.md pyproject.toml
-git commit -m "feat: extract_frame (ffmpeg) + download_video helper"
+git add src/study_notes/tools/frames.py tests/tools/test_frames.py README-dev.md pyproject.toml .gitignore
+git commit -m "feat: extract_frame via Docker ffmpeg + download_video helper"
 ```
 
 ---
@@ -875,12 +922,21 @@ def vault_search(query: str, category: str, k: int = 5) -> list[dict]:
 
 @mcp.tool()
 def extract_frame(video_url: str, timestamp: str, prefix: str) -> dict:
-    """Download a video and save the frame at `timestamp` (HH:MM:SS) into the vault frames dir."""
+    """Download a video and save the frame at `timestamp` (HH:MM:SS) into the vault frames dir.
+
+    Requires `config.vault_path` to be under the host home dir (Colima mount).
+    The video is downloaded into the frames dir (same mount as the output frame)
+    and deleted after extraction, leaving only the JPEG.
+    """
     ctx = _context()
     frames_dir = ctx.config.vault_path / ctx.config.attachments_dir / ctx.config.frames_subdir
-    video = frames.download_video(video_url, frames_dir / "_tmp")
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    video = frames.download_video(video_url, frames_dir)  # same dir as the frame
     out = frames_dir / frames.frame_filename(prefix, timestamp)
-    frames.extract_frame(video, timestamp, out)
+    try:
+        frames.extract_frame(video, timestamp, out)
+    finally:
+        video.unlink(missing_ok=True)  # drop the large video, keep the frame
     rel = f"{ctx.config.attachments_dir}/{ctx.config.frames_subdir}/{out.name}"
     return {"embed_path": rel}
 
@@ -972,7 +1028,7 @@ git commit -m "feat: FastMCP server exposing the 5 study-notes tools"
 - `fetch_youtube_transcript` (timed segments + metadata) → Tasks 1–2. ✓
 - `list_categories` → Task 5 + Task 6. ✓
 - `vault_search(query, category)` category-scoped → Task 5 + Task 6. ✓
-- `extract_frame` (ffmpeg) → Task 3 + Task 6. ✓
+- `extract_frame` (Docker ffmpeg) → Task 3 + Task 6. ✓
 - `vault_write` non-destructive + category folder/MOC creation + MOC link maintenance + index upsert + read-back → Task 4 + Task 6. ✓
 - MCP server exposing all as typed tools → Task 6. ✓
 - Reuse of `renderer`/`vault_index` (no reimplementation) → Task 4 uses `render_note`/`render_update_section`/`VaultIndex`. ✓

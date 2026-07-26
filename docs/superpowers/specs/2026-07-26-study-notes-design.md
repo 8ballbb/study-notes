@@ -355,7 +355,7 @@ Fail loud and safe; never corrupt the vault.
 - Claude Code CLI (authenticated).
 - `FlagEmbedding` + PyTorch (MPS), `BAAI/bge-m3`.
 - PostgreSQL 17 + `pgvector`, via Docker (`pgvector/pgvector:pg17`) on a Colima runtime; `docker-compose.yml` at the repo root.
-- `yt-dlp`, `ffmpeg`.
+- `yt-dlp` (pip). **ffmpeg runs via Docker** (`jrottenberg/ffmpeg:6.1-alpine`, throwaway `docker run`) — not a host install. The Python app itself stays on the host because BGE-M3 uses Apple MPS, which Docker on Mac cannot access; only services/binaries (Postgres, ffmpeg) are containerized. ffmpeg file I/O must be under a Colima-mounted path (`$HOME`).
 - Python MCP server framework (e.g. the official `mcp` package).
 - `textutil` (macOS built-in) or `pandoc` for `.docx` → text conversion.
 
