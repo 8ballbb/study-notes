@@ -6,7 +6,7 @@
 
 **Architecture:** A Python package (`study_notes`) with focused modules. Pure logic (config, models, renderer) has no I/O and is unit-tested directly. Retrieval is split behind two seams: an `Embedder` protocol (real BGE-M3 vs a fast fake) and a `VaultIndex` class that owns all SQL. Hybrid search fuses pgvector dense similarity with PostgreSQL full-text search via Reciprocal Rank Fusion, always filtered to a single category.
 
-**Tech Stack:** Python 3.12+, `uv`, PostgreSQL 17 + `pgvector`, `psycopg` (v3), `pgvector` Python package, `FlagEmbedding` (BGE-M3) + PyTorch (MPS), `pytest`, `tomllib` (stdlib).
+**Tech Stack:** Python 3.12+, `uv`, PostgreSQL 17 + `pgvector` (run via Docker image `pgvector/pgvector:pg17` on a Colima runtime; `docker-compose.yml` at repo root), `psycopg` (v3), `pgvector` Python package, `FlagEmbedding` (BGE-M3) + PyTorch (MPS), `pytest`, `tomllib` (stdlib).
 
 ## Global Constraints
 
@@ -695,21 +695,31 @@ git commit -m "feat: embedder protocol with fake and BGE-M3 implementations"
 ```markdown
 # Dev setup
 
-## PostgreSQL + pgvector (macOS)
+## PostgreSQL + pgvector (Docker via Colima)
 
-    brew install postgresql@17 pgvector
-    brew services start postgresql@17
-    createdb study_notes
-    createdb study_notes_test
+The database runs in a container defined by `docker-compose.yml`
+(`pgvector/pgvector:pg17` — Postgres 17 with pgvector preinstalled). On a Mac
+without Docker Desktop, use Colima as the runtime:
 
-Verify pgvector is available:
+    brew install colima docker docker-compose
+    colima start
+    docker compose up -d          # starts Postgres + pgvector
 
-    psql study_notes -c "CREATE EXTENSION IF NOT EXISTS vector;"
+This creates two databases: `study_notes` (main) and `study_notes_test` (tests,
+created by `docker/initdb/01-create-test-db.sql`). Connection URL:
+
+    postgresql://postgres:postgres@localhost:5432/study_notes
+
+Stop / reset:
+
+    docker compose down           # stop
+    docker compose down -v        # stop and wipe the data volume
 
 ## Tests
 
+    export STUDY_NOTES_TEST_DB="postgresql://postgres:postgres@localhost:5432/study_notes_test"
     uv run pytest -m "not slow and not integration"   # fast unit tests
-    uv run pytest -m integration                       # needs the test DB
+    uv run pytest -m integration                       # needs the DB container up
     uv run pytest -m slow                               # downloads BGE-M3
 ```
 
@@ -753,7 +763,8 @@ import pytest
 
 
 TEST_DB_URL = os.environ.get(
-    "STUDY_NOTES_TEST_DB", "postgresql://localhost/study_notes_test"
+    "STUDY_NOTES_TEST_DB",
+    "postgresql://postgres:postgres@localhost:5432/study_notes_test",
 )
 
 

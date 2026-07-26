@@ -38,7 +38,7 @@ build is genuinely additive, not redundant.
 
 - MacBook Pro, Apple M4, 10 cores, 16 GB unified memory, macOS 15, arm64.
 - Claude Code installed and authenticated (the tool rides this auth; no API key handling).
-- Local PostgreSQL with `pgvector`.
+- PostgreSQL 17 + `pgvector`, run in a Docker container (`pgvector/pgvector:pg17`) via Colima — reproducible and free of host build-version mismatches.
 
 ## 4. Vault structure & conventions
 
@@ -264,7 +264,7 @@ attachments_dir = "06 - Attachments"
 frames_subdir = "frames"
 
 [database]
-url = "postgresql://localhost/study_notes"
+url = "postgresql://postgres:postgres@localhost:5432/study_notes"   # docker: pgvector/pgvector:pg17
 
 [embedding]
 model = "BAAI/bge-m3"              # local, dense + sparse, via FlagEmbedding on MPS
@@ -354,7 +354,7 @@ Fail loud and safe; never corrupt the vault.
 - Python 3.12+, `uv`/`venv`.
 - Claude Code CLI (authenticated).
 - `FlagEmbedding` + PyTorch (MPS), `BAAI/bge-m3`.
-- PostgreSQL + `pgvector`.
+- PostgreSQL 17 + `pgvector`, via Docker (`pgvector/pgvector:pg17`) on a Colima runtime; `docker-compose.yml` at the repo root.
 - `yt-dlp`, `ffmpeg`.
 - Python MCP server framework (e.g. the official `mcp` package).
 - `textutil` (macOS built-in) or `pandoc` for `.docx` → text conversion.
