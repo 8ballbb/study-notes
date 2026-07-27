@@ -84,6 +84,11 @@ class VaultIndex:
             )
         self.conn.commit()
 
+    def paths_for_source(self, source: str) -> list[str]:
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT path FROM notes WHERE source = %s ORDER BY path;", (source,))
+            return [r[0] for r in cur.fetchall()]
+
     def find_related(self, query: str, category: str, k: int = 5) -> list[tuple[str, float]]:
         qvec = self.embedder.embed([query])[0]
         with self.conn.cursor() as cur:
