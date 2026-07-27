@@ -35,4 +35,5 @@ markers = [
     "slow: downloads/loads the BGE-M3 model",
     "network: hits the live network (YouTube)",
     "docker: requires a running Docker daemon (Colima) for ffmpeg",
+    "e2e: runs the real Claude Agent SDK engine (auth + network + DB)",
 ]

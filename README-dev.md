@@ -65,3 +65,14 @@ Register with Claude Code via an MCP config JSON (used by Plan 3's orchestrator)
     uv run study-notes add https://youtu.be/<id> --force     # re-ingest
 
 Requires Claude Code installed and authenticated (the run rides that auth).
+
+## Engine
+
+`study-notes add <url>` now runs the in-process Agent-SDK orchestrator (no MCP
+subprocess). The `[models]` section in `config.toml` sets per-role models:
+`orchestrator` (decomposition, judgment, integration), `extractor` (content
+extraction), and `enricher` (web research and context enrichment).
+
+The MCP server (`mcp_server.py`) is retained only for an interactive "Claude
+drives the tools" mode (via Claude Code's integrated MCP infrastructure) and
+is not used by the CLI `add` command.
