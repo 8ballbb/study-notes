@@ -1,0 +1,20 @@
+vault_path = "/Users/andrewpoole/vault"
+notes_root = "04 - Resources"
+attachments_dir = "06 - Attachments"
+frames_subdir = "frames"
+
+[database]
+url = "postgresql://postgres:postgres@localhost:5432/study_notes"
+
+[embedding]
+model = "BAAI/bge-m3"
+
+[agent]
+model = "claude-opus-4-8"
+
+[prompts]
+procedure = "prompts/procedure.md"
+anti_slop = "prompts/anti-slop.md"
+
+[run]
+dry_run = false

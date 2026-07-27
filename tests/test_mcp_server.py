@@ -1,16 +1,13 @@
 import pytest
 
 
-def test_server_registers_all_five_tools():
+def test_server_registers_all_tools():
     from study_notes import mcp_server
 
     tool_names = {t.name for t in mcp_server.mcp._tool_manager.list_tools()}
     assert {
-        "fetch_youtube_transcript",
-        "list_categories",
-        "vault_search",
-        "extract_frame",
-        "vault_write",
+        "fetch_youtube_transcript", "list_categories", "vault_search",
+        "extract_frame", "vault_write", "check_slop",
     } <= tool_names
 
 

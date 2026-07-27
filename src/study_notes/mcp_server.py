@@ -123,6 +123,14 @@ def vault_write(title: str, category: str, summary: list[str], cards: list[dict]
     return {"path": path}
 
 
+@mcp.tool()
+def check_slop(text: str) -> list[dict]:
+    """Flag AI-slop writing patterns in a drafted note. Returns findings to fix before writing."""
+    from study_notes.slop_check import slop_check
+
+    return [{"pattern": f.pattern, "snippet": f.snippet} for f in slop_check(text)]
+
+
 def main() -> None:
     mcp.run()
 

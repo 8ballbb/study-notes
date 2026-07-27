@@ -14,6 +14,7 @@ class Config:
     models: dict[str, str]
     prompts: dict[str, str]
     dry_run: bool
+    agent_model: str = "claude-opus-4-8"
 
 
 def load_config(path: Path) -> Config:
@@ -27,7 +28,8 @@ def load_config(path: Path) -> Config:
         frames_subdir=data["frames_subdir"],
         database_url=data["database"]["url"],
         embedding_model=data["embedding"]["model"],
-        models=dict(data["models"]),
+        models=dict(data.get("models", {})),
         prompts=dict(data["prompts"]),
         dry_run=bool(data["run"]["dry_run"]),
+        agent_model=data.get("agent", {}).get("model", "claude-opus-4-8"),
     )
