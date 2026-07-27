@@ -17,11 +17,11 @@ def db_conn():
     conn = connect(TEST_DB_URL)
     apply_schema(conn)
     with conn.cursor() as cur:
-        cur.execute("TRUNCATE notes, categories CASCADE;")
+        cur.execute("TRUNCATE notes, categories, sources CASCADE;")
     conn.commit()
     yield conn
     conn.rollback()
     with conn.cursor() as cur:
-        cur.execute("TRUNCATE notes, categories CASCADE;")
+        cur.execute("TRUNCATE notes, categories, sources CASCADE;")
     conn.commit()
     conn.close()

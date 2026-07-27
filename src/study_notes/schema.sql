@@ -22,3 +22,11 @@ CREATE TABLE IF NOT EXISTS notes (
 CREATE INDEX IF NOT EXISTS notes_dense_idx ON notes USING hnsw (dense_vec vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS notes_fts_idx   ON notes USING gin (fts);
 CREATE INDEX IF NOT EXISTS notes_cat_idx   ON notes (category);
+
+CREATE TABLE IF NOT EXISTS sources (
+    source_id   TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL,
+    origin      TEXT NOT NULL,
+    ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    note_paths  TEXT[] NOT NULL DEFAULT '{}'
+);
