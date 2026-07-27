@@ -40,15 +40,15 @@ def extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path:
 def download_video(url: str, out_dir: Path) -> Path:
     import yt_dlp
 
+    from study_notes.tools._ytdlp import quiet_opts, stdout_to_stderr
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    opts = {
+    opts = quiet_opts({
         # single progressive mp4 stream -> no ffmpeg merge step needed
         "format": "best[ext=mp4]/mp4/best",
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-    }
-    with yt_dlp.YoutubeDL(opts) as ydl:
+    })
+    with stdout_to_stderr(), yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     matches = sorted(out_dir.glob(f"{info.get('id', '')}*"))
     if not matches:

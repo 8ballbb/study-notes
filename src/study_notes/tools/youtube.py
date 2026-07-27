@@ -92,20 +92,20 @@ def _pick_vtt(candidates: list[Path], video_id: str) -> Path:
 def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> TranscriptResult:
     import yt_dlp
 
+    from study_notes.tools._ytdlp import quiet_opts, stdout_to_stderr
+
     ctx = tempfile.TemporaryDirectory() if tmp_dir is None else None
     work = Path(tmp_dir) if tmp_dir is not None else Path(ctx.name)
     try:
-        opts = {
+        opts = quiet_opts({
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitleslangs": ["en", "en-US", "en-orig"],
             "subtitlesformat": "vtt",
             "skip_download": True,
             "outtmpl": str(work / "%(id)s.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
-        }
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        })
+        with stdout_to_stderr(), yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
         vid = info.get("id", "")
         candidates = list(work.glob(f"{vid}*.vtt"))
