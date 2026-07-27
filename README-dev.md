@@ -26,3 +26,13 @@ Stop / reset:
     uv run pytest -m "not slow and not integration"   # fast unit tests
     uv run pytest -m integration                       # needs the DB container up
     uv run pytest -m slow                               # downloads BGE-M3
+
+## ffmpeg (frame extraction) — via Docker
+
+ffmpeg runs in a throwaway container (no host install). Pre-pull the image:
+
+    docker pull jrottenberg/ffmpeg:6.1-alpine
+
+Because Colima only mounts your home directory, frame I/O must live under
+`$HOME` (the vault frames dir does). Tests that touch ffmpeg are marked
+`docker` and use a work dir under the repo.
