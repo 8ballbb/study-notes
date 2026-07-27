@@ -41,3 +41,16 @@ def test_fetch_youtube_transcript_live():
     res = fetch_youtube_transcript("https://www.youtube.com/watch?v=aircAruvnKk")
     assert res.segments
     assert res.title
+
+
+def test_pick_vtt_prefers_manual_en_over_auto():
+    from pathlib import Path
+
+    from study_notes.tools.youtube import _pick_vtt
+
+    cands = [
+        Path("/w/vid123.en-orig.vtt"),  # auto
+        Path("/w/vid123.en.vtt"),       # manual, should win
+        Path("/w/vid123.en-US.vtt"),
+    ]
+    assert _pick_vtt(cands, "vid123").name == "vid123.en.vtt"

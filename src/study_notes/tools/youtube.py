@@ -74,6 +74,21 @@ def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
     )
 
 
+def _pick_vtt(candidates: list[Path], video_id: str) -> Path:
+    """Prefer an exact 'en' track (usually manual) over 'en-US'/'en-orig' (auto)."""
+    order = {"en": 0, "en-US": 1, "en-orig": 2}
+
+    def key(p: Path) -> tuple[int, str]:
+        stem = p.name
+        if stem.startswith(f"{video_id}.") and stem.endswith(".vtt"):
+            lang = stem[len(video_id) + 1 : -4]
+        else:
+            lang = stem
+        return (order.get(lang, 99), p.name)
+
+    return sorted(candidates, key=key)[0]
+
+
 def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> TranscriptResult:
     import yt_dlp
 
@@ -93,10 +108,10 @@ def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> Transc
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
         vid = info.get("id", "")
-        candidates = sorted(work.glob(f"{vid}*.vtt"))
+        candidates = list(work.glob(f"{vid}*.vtt"))
         if not candidates:
             raise TranscriptUnavailable(url)
-        return _result_from_info(url=url, info=info, vtt_path=candidates[0])
+        return _result_from_info(url=url, info=info, vtt_path=_pick_vtt(candidates, vid))
     finally:
         if ctx is not None:
             ctx.cleanup()
