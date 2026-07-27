@@ -67,3 +67,25 @@ def test_write_new_upserts_into_index(tmp_path, db_conn):
     w.write_new(_topic(), category="Distributed Systems")
     hits = w.index.find_related("leaders per term", category="Distributed Systems", k=5)
     assert any("Raft" in p for p, _ in hits)
+
+
+def test_write_merge_missing_target_raises(tmp_path, db_conn):
+    w = _writer(tmp_path, db_conn)
+    with pytest.raises(FileNotFoundError):
+        w.write_merge("04 - Resources/DS/Nope.md", _topic(), on=date(2026, 7, 27))
+
+
+def test_write_new_rejects_category_traversal(tmp_path, db_conn):
+    w = _writer(tmp_path, db_conn)
+    with pytest.raises(ValueError):
+        w.write_new(_topic(), category="../../evil")
+    # nothing was written outside the vault
+    assert not (tmp_path.parent / "evil").exists()
+
+
+def test_write_merge_upserts_into_index(tmp_path, db_conn):
+    w = _writer(tmp_path, db_conn)
+    path = w.write_new(_topic(), category="Distributed Systems")
+    w.write_merge(path, _topic(), on=date(2026, 7, 27))
+    hits = w.index.find_related("leaders per term", category="Distributed Systems", k=5)
+    assert any("Raft" in p for p, _ in hits)
