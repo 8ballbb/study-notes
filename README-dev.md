@@ -54,3 +54,14 @@ Register with Claude Code via an MCP config JSON (used by Plan 3's orchestrator)
         }
       }
     }
+
+## Running the tool
+
+    docker compose up -d                      # Postgres
+    uv run study-notes reindex                # build the index from your vault
+    uv run study-notes add https://youtu.be/<id>
+    uv run study-notes add paper.pdf --category "Machine Learning"
+    uv run study-notes add https://youtu.be/<id> --dry-run   # preview, no writes
+    uv run study-notes add https://youtu.be/<id> --force     # re-ingest
+
+Requires Claude Code installed and authenticated (the run rides that auth).
