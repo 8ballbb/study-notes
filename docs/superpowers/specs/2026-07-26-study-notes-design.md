@@ -158,6 +158,10 @@ There is no human confirmation gate. Correctness is a property of the procedure 
 A single `claude -p` run per input follows an ordered, checklisted procedure (encoded in the
 task system prompt), with self-checks between steps:
 
+0. **Deduplicate (idempotency gate).** Compute the source's canonical `source_id` (see §9.5)
+   and check the ingestion log. If it was already ingested, stop and report the existing note
+   paths — unless `--force` was passed. This runs before any model work, so re-adding the same
+   URL/file is cheap and safe.
 1. **Ingest** — for a document, Claude reads the file directly (multimodal; `.docx` converted
    in one line via `textutil`/`pandoc`). For a YouTube URL, Claude calls
    `fetch_youtube_transcript`.
@@ -200,6 +204,22 @@ verified. A crash mid-run leaves the vault untouched or appended-only — never 
   with plain SQL over one store — the reason Postgres was chosen over Qdrant.
 - No conflict detection or resolution ships in v1. The foundation is the metadata that cannot
   be cleanly retrofitted; the logic is a later chapter.
+
+## 9.5 Ingestion log (idempotency)
+
+The tool records every source it ingests so re-adding the same content is detected and skipped.
+
+- **Canonical `source_id`:** YouTube → `youtube:<video_id>` (the id extracted from any URL form —
+  `watch?v=`, `youtu.be/`, `shorts/`, with playlist/query noise stripped); files → `sha256:<hex>`
+  of the file bytes (so a moved or renamed file with identical content is recognized, and an
+  edited file is treated as new).
+- **`sources` table** (PostgreSQL, alongside the index): `source_id` (PK), `source_type`,
+  `origin` (original URL/path), `ingested_at`, `note_paths[]` (the notes produced).
+- **Behavior:** the `add` flow checks the log before doing any model work (step 0, §8). On a hit
+  it reports "already ingested as `<paths>`" and exits 0 without changes. `--force` re-ingests
+  (and updates the record). The record is written only after a successful write.
+- Whole-source granularity: dedup is per source, not per topic. Re-running a `--force` ingest of
+  an updated video is expected to merge/refresh via the normal placement flow.
 
 ## 10. Note & card format
 
@@ -252,6 +272,24 @@ Rules:
 - **Setup note:** enabling FSRS in the plugin is a one-time recommended step, documented in the
   shipped README.
 
+## 10.5 Writing style — anti-slop guardrails
+
+Generated notes must read like a person's study notes, not AI filler. Two layers enforce this:
+
+- **Style guide in the prompts (primary).** A versioned `prompts/anti-slop.md` (adapted from
+  petergyang/no-ai-slop, credited) is appended to the extraction/segmentation system prompts.
+  It bans the usual tells — binary contrasts ("It's not X, it's Y"), throat-clearing openers
+  ("Here's the thing"), faux-insight setups ("what nobody tells you"), colon reveals, importance
+  puffery ("marks a pivotal moment"), weasel attribution ("studies show"), negative listing,
+  dramatic fragmentation, "In conclusion/Ultimately" recaps, emoji-in-headings, and em-dash-as-
+  crutch — and enforces: lead with the point, active voice, concrete specifics, plain repeated
+  nouns over synonym cycling.
+- **`slop_check` validator (backstop).** A pure `slop_check(text) -> list[finding]` flags the
+  mechanically-detectable phrases/patterns. The self-verification step (§8 step 8) runs it on the
+  drafted note; findings are reported back for the model to revise. It does not hard-fail a run
+  (style is a judgment call) — the prompt guide is the real defense; the validator catches
+  residue and prevents regressions.
+
 ## 11. Configuration
 
 A single `config.toml` plus a PostgreSQL connection. No LLM secrets — the tool rides Claude
@@ -278,6 +316,7 @@ categorize = "claude-opus-4-8"
 segment    = "prompts/segment.md"
 extract    = "prompts/extract.md"
 categorize = "prompts/categorize.md"
+anti_slop  = "prompts/anti-slop.md"   # appended to extraction/segmentation prompts
 
 [run]
 dry_run = false
@@ -291,9 +330,10 @@ dry_run = false
 
 ### CLI surface
 
-- `study-notes add <path-or-url> [--category "<name>"] [--note "<title>"] [--dry-run]` —
+- `study-notes add <path-or-url> [--category "<name>"] [--note "<title>"] [--dry-run] [--force]` —
   the primary command; ingest one source. `--category` forces the domain (skips category
-  resolution, creating the category if new); `--note` forces a merge target (skips note search).
+  resolution, creating the category if new); `--note` forces a merge target (skips note search);
+  `--force` re-ingests a source already in the ingestion log (§9.5).
 - `study-notes reindex` — (re)build the PostgreSQL index and category registry from the current
   vault.
 
