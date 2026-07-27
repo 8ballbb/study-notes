@@ -43,7 +43,7 @@ def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str
 
 
 def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: IngestLog,
-        run_claude, build_system_prompt, category=None, note=None,
+        run_engine, category=None, note=None,
         dry_run: bool = False, force: bool = False) -> AddResult:
     source_id, source_type, origin = resolve_source(raw_input)
 
@@ -53,11 +53,7 @@ def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: Ingest
             return AddResult("skipped", source_id, existing.note_paths,
                              f"already ingested as {existing.note_paths}")
 
-    system_prompt = build_system_prompt(dry_run)
-    prompt = _input_prompt(origin, source_type, category, note, dry_run)
-    # run_claude receives the fully-built command; here we pass the prompt+sp via a tuple the
-    # CLI's real runner closes over. Tests stub run_claude directly.
-    output = run_claude((prompt, system_prompt, dry_run))
+    output = run_engine(_input_prompt(origin, source_type, category, note, dry_run))
 
     if dry_run:
         return AddResult("dry_run", source_id, [], output or "dry run — nothing written")
