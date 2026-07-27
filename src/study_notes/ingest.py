@@ -1,8 +1,11 @@
 import hashlib
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
-_YT_ID = re.compile(r"(?:v=|/shorts/|youtu\.be/|/embed/|/v/)([0-9A-Za-z_-]{11})")
+import psycopg
+
+_YT_ID = re.compile(r"(?:[?&]v=|/shorts/|youtu\.be/|/embed/|/v/)([0-9A-Za-z_-]{11})")
 
 
 class SourceIdentityError(Exception):
@@ -22,11 +25,6 @@ def file_source_id(path: Path) -> str:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return f"sha256:{h.hexdigest()}"
-
-
-from dataclasses import dataclass
-
-import psycopg
 
 
 @dataclass

@@ -28,3 +28,12 @@ def test_detects_emoji_heading():
 def test_findings_carry_snippet():
     findings = slop_check("Here's the thing about caching.")
     assert findings and all(isinstance(f, SlopFinding) and f.snippet for f in findings)
+
+
+def test_detects_faux_insight_and_negative_listing():
+    findings = slop_check(
+        "What most people get wrong is the eval. Not slow. Not unreliable. Just wrong."
+    )
+    patterns = {f.pattern for f in findings}
+    assert "faux-insight" in patterns
+    assert "negative-listing" in patterns

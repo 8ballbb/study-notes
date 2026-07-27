@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class SlopFinding:
     pattern: str
     snippet: str
@@ -27,7 +27,7 @@ _RULES: list[tuple[str, re.Pattern]] = [
     ("rhetorical-setup",
      re.compile(r"\b(what if i told you|think about it|plot twist)\b", re.I)),
     ("negative-listing",
-     re.compile(r"\bnot a [^.\n]{1,30}\.\s*not a [^.\n]{1,30}\.", re.I)),
+     re.compile(r"\bnot (a |an )?[^.\n]{1,30}\.\s*not (a |an )?[^.\n]{1,30}\.", re.I)),
     ("emoji-heading",
      re.compile(r"(?:^|\n)#{1,6} .*[\U0001F000-\U0001FAFF☀-➿]")),
 ]
