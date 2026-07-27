@@ -14,8 +14,8 @@ def test_load_config_reads_all_fields():
     assert cfg.frames_subdir == "frames"
     assert cfg.database_url == "postgresql://localhost/study_notes_test"
     assert cfg.embedding_model == "BAAI/bge-m3"
-    assert cfg.models["extract"] == "claude-fable-5"
-    assert cfg.prompts["categorize"] == "prompts/categorize.md"
+    assert cfg.models["orchestrator"] == "claude-opus-4-8"
+    assert cfg.prompts["note_writing"] == "prompts/note-writing.md"
     assert cfg.dry_run is False
 
 

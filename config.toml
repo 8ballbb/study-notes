@@ -9,11 +9,15 @@ url = "postgresql://postgres:postgres@localhost:5432/study_notes"
 [embedding]
 model = "BAAI/bge-m3"
 
-[agent]
-model = "sonnet"
+[models]
+orchestrator = "claude-opus-4-8"
+extractor = "claude-sonnet-5"
+enricher = "claude-sonnet-5"
 
 [prompts]
-procedure = "prompts/procedure.md"
+orchestrator = "prompts/orchestrator.md"
+note_writing = "prompts/note-writing.md"
+enrichment = "prompts/enrichment.md"
 anti_slop = "prompts/anti-slop.md"
 
 [run]

@@ -10,14 +10,15 @@ url = "postgresql://localhost/study_notes_test"
 model = "BAAI/bge-m3"
 
 [models]
-segment = "claude-haiku-4-5"
-extract = "claude-fable-5"
-categorize = "claude-opus-4-8"
+orchestrator = "claude-opus-4-8"
+extractor = "claude-sonnet-5"
+enricher = "claude-sonnet-5"
 
 [prompts]
-segment = "prompts/segment.md"
-extract = "prompts/extract.md"
-categorize = "prompts/categorize.md"
+orchestrator = "prompts/orchestrator.md"
+note_writing = "prompts/note-writing.md"
+enrichment = "prompts/enrichment.md"
+anti_slop = "prompts/anti-slop.md"
 
 [run]
 dry_run = false

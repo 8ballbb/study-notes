@@ -14,7 +14,6 @@ class Config:
     models: dict[str, str]
     prompts: dict[str, str]
     dry_run: bool
-    agent_model: str = "claude-opus-4-8"
 
 
 def load_config(path: Path) -> Config:
@@ -31,5 +30,4 @@ def load_config(path: Path) -> Config:
         models=dict(data.get("models", {})),
         prompts=dict(data["prompts"]),
         dry_run=bool(data["run"]["dry_run"]),
-        agent_model=data.get("agent", {}).get("model", "claude-opus-4-8"),
     )
