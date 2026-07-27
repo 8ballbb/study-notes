@@ -39,6 +39,11 @@ def build_command(*, input_prompt: str, model: str, system_prompt: str,
         "--append-system-prompt", system_prompt,
         "--mcp-config", mcp_config_path,
         "--allowedTools", ",".join(tools),
+        # Headless: allowedTools alone still prompts for MCP tools, which a
+        # non-interactive run can't answer. Bypass the prompt; the toolset is
+        # already scoped by --allowedTools and (on dry-run) the write tool is
+        # omitted, with the procedure prompt as a second guard against writing.
+        "--permission-mode", "bypassPermissions",
         "--output-format", "json",
     ]
     for d in add_dirs:

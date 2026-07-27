@@ -10,7 +10,7 @@ url = "postgresql://postgres:postgres@localhost:5432/study_notes"
 model = "BAAI/bge-m3"
 
 [agent]
-model = "claude-opus-4-8"
+model = "sonnet"
 
 [prompts]
 procedure = "prompts/procedure.md"

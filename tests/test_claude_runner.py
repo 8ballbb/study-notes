@@ -67,3 +67,12 @@ def test_parse_result_raises_on_non_object_json():
         parse_result("5")
     with pytest.raises(ClaudeRunError):
         parse_result("[1, 2, 3]")
+
+
+def test_build_command_sets_bypass_permission_mode():
+    cmd = build_command(
+        input_prompt="p", model="m", system_prompt="s",
+        mcp_config_path="/tmp/mcp.json", add_dirs=[], dry_run=False,
+    )
+    assert "--permission-mode" in cmd
+    assert cmd[cmd.index("--permission-mode") + 1] == "bypassPermissions"
