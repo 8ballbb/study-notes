@@ -9,10 +9,6 @@ url = "postgresql://postgres:postgres@localhost:5432/study_notes"
 [embedding]
 model = "BAAI/bge-m3"
 
-[models]
-# unused by Plan 3's single-agentic-run design (kept only because
-# Config.models/load_config still require the key from Plan 1)
-
 [agent]
 model = "claude-opus-4-8"
 

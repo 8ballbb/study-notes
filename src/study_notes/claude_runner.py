@@ -51,14 +51,17 @@ def parse_result(stdout: str) -> str:
         env = json.loads(stdout)
     except (json.JSONDecodeError, TypeError) as e:
         raise ClaudeRunError(f"could not parse claude output: {e}") from e
+    if not isinstance(env, dict):
+        raise ClaudeRunError(f"unexpected claude output shape: {type(env).__name__}")
     if env.get("is_error"):
         raise ClaudeRunError(f"claude reported an error: {env.get('result')!r}")
     return env.get("result", "")
 
 
-def run(cmd: list[str]) -> str:
+def run(cmd: list[str], *, retry: bool = False) -> str:
+    attempts = 2 if retry else 1
     last: Exception | None = None
-    for _ in range(2):
+    for _ in range(attempts):
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if proc.returncode == 0:
             try:

@@ -57,10 +57,10 @@ def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: Ingest
     prompt = _input_prompt(origin, source_type, category, note, dry_run)
     # run_claude receives the fully-built command; here we pass the prompt+sp via a tuple the
     # CLI's real runner closes over. Tests stub run_claude directly.
-    run_claude((prompt, system_prompt, dry_run))
+    output = run_claude((prompt, system_prompt, dry_run))
 
     if dry_run:
-        return AddResult("dry_run", source_id, [], "dry run — nothing written")
+        return AddResult("dry_run", source_id, [], output or "dry run — nothing written")
 
     note_paths = index.paths_for_source(origin)
     ingest_log.record(source_id, source_type, origin, note_paths)

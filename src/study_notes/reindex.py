@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 from study_notes.config import Config
 from study_notes.models import Note, Provenance
@@ -17,7 +16,10 @@ def parse_frontmatter(md: str) -> dict:
         if ":" not in line:
             continue
         key, _, val = line.partition(":")
-        out[key.strip()] = val.strip().strip('"')
+        v = val.strip()
+        if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+            v = v[1:-1].replace('\\"', '"').replace('\\\\', '\\')
+        out[key.strip()] = v
     return out
 
 

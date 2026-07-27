@@ -85,3 +85,16 @@ def test_add_dry_run_does_not_record(db_conn, tmp_path):
               dry_run=True)
     assert res.status == "dry_run"
     assert log.lookup("youtube:772CUg2xYAo") is None  # nothing recorded on dry run
+
+
+def test_add_dry_run_returns_model_plan(db_conn, tmp_path):
+    from study_notes.ingest import IngestLog
+    from study_notes.orchestrator import add
+
+    index = VaultIndex(db_conn, FakeEmbedder())
+    log = IngestLog(db_conn)
+    res = add("https://youtu.be/772CUg2xYAo", config=_cfg(tmp_path), index=index,
+              ingest_log=log, run_claude=lambda payload: "PROPOSED PLAN: 2 topics",
+              build_system_prompt=lambda dry: "sp", dry_run=True)
+    assert res.status == "dry_run"
+    assert "PROPOSED PLAN" in res.message

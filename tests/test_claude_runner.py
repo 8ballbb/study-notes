@@ -60,3 +60,10 @@ def test_parse_result_raises_on_error_envelope():
 def test_parse_result_raises_on_garbage():
     with pytest.raises(ClaudeRunError):
         parse_result("not json")
+
+
+def test_parse_result_raises_on_non_object_json():
+    with pytest.raises(ClaudeRunError):
+        parse_result("5")
+    with pytest.raises(ClaudeRunError):
+        parse_result("[1, 2, 3]")

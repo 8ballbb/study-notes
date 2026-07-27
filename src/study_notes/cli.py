@@ -58,16 +58,28 @@ def main(argv: list[str] | None = None) -> int:
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
             json.dump(mcp_config_dict(str(Path(ns.config).resolve())), f)
             mcp_path = f.name
-        cmd = build_command(
-            input_prompt=prompt, model=config.agent_model, system_prompt=system_prompt,
-            mcp_config_path=mcp_path, add_dirs=[str(config.vault_path)], dry_run=dry_run,
-        )
-        return run(cmd)
+        add_dirs = [str(config.vault_path)]
+        p = Path(ns.input)
+        if p.exists():
+            add_dirs.append(str(p.resolve().parent))
+        try:
+            cmd = build_command(
+                input_prompt=prompt, model=config.agent_model, system_prompt=system_prompt,
+                mcp_config_path=mcp_path, add_dirs=add_dirs, dry_run=dry_run,
+            )
+            return run(cmd, retry=dry_run)
+        finally:
+            Path(mcp_path).unlink(missing_ok=True)
 
-    res = add(ns.input, config=config, index=index, ingest_log=ingest_log,
-              run_claude=run_claude,
-              build_system_prompt=lambda dry: build_system_prompt(config, dry),
-              category=ns.category, note=ns.note, dry_run=ns.dry_run, force=ns.force)
+    from study_notes.claude_runner import ClaudeRunError
+    try:
+        res = add(ns.input, config=config, index=index, ingest_log=ingest_log,
+                  run_claude=run_claude,
+                  build_system_prompt=lambda dry: build_system_prompt(config, dry),
+                  category=ns.category, note=ns.note, dry_run=ns.dry_run, force=ns.force)
+    except ClaudeRunError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     print(res.message)
     return 0
 
