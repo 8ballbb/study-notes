@@ -8,6 +8,8 @@ dependencies = [
     "pgvector>=0.3.6",
     "FlagEmbedding>=1.3.0",
     "torch>=2.4",
+    "mcp>=1.2,<2",
+    "yt-dlp>=2025.1.1",
 ]
 
 [project.optional-dependencies]
@@ -26,4 +28,6 @@ pythonpath = ["src"]
 markers = [
     "integration: requires a live PostgreSQL database",
     "slow: downloads/loads the BGE-M3 model",
+    "network: hits the live network (YouTube)",
+    "docker: requires a running Docker daemon (Colima) for ffmpeg",
 ]
