@@ -307,25 +307,26 @@ url = "postgresql://postgres:postgres@localhost:5432/study_notes"   # docker: pg
 [embedding]
 model = "BAAI/bge-m3"              # local, dense + sparse, via FlagEmbedding on MPS
 
-[models]                           # per-task model selection, tunable without touching code
-segment    = "claude-haiku-4-5"
-extract    = "claude-fable-5"
-categorize = "claude-opus-4-8"
+[agent]                            # the single agentic claude -p run
+model = "claude-opus-4-8"          # one model drives the whole procedure via MCP tools
 
 [prompts]                          # versioned prompt files, diffable over time
-segment    = "prompts/segment.md"
-extract    = "prompts/extract.md"
-categorize = "prompts/categorize.md"
-anti_slop  = "prompts/anti-slop.md"   # appended to extraction/segmentation prompts
+procedure = "prompts/procedure.md"    # master system prompt: the self-verifying procedure
+anti_slop = "prompts/anti-slop.md"    # appended to the procedure prompt
 
 [run]
 dry_run = false
 ```
 
-- **Model-per-task** and **prompt-per-task** are data, not code. Each `claude -p` invocation
-  passes `--model <task model>` and the task's system prompt (`--append-system-prompt`, body
-  loaded from the prompt file), plus `--allowedTools` scoped to that step and `--add-dir` for
-  input/vault access, and `--output-format json` for parseable results.
+- **Single agentic run** (chosen design): one `claude -p` per input, guided by the procedure
+  system prompt, drives the MCP tools (fetch transcript, list/search categories, extract frame,
+  check slop, vault write) and self-verifies. Python owns only the dedup gate, the invocation,
+  and recording the ingestion log. The invocation passes `--model <agent model>`,
+  `--append-system-prompt <procedure + anti-slop>`, `--mcp-config <study-notes-tools>`,
+  `--allowedTools` scoped to the tools (write tools omitted under `--dry-run`), `--add-dir` for
+  input/vault access, and `--output-format json`.
+- The earlier per-stage model/prompt split is superseded: the procedure lives in one prompt and
+  runs on one model, because the agent drives the stages itself through the tools.
 - CLI flags override config per run.
 
 ### CLI surface
