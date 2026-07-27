@@ -28,4 +28,5 @@ pythonpath = ["src"]
 markers = [
     "integration: requires a live PostgreSQL database",
     "slow: downloads/loads the BGE-M3 model",
+    "network: hits the live network (YouTube)",
 ]

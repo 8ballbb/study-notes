@@ -43,3 +43,60 @@ def parse_vtt(text: str) -> list[TranscriptSegment]:
             segments.append(TranscriptSegment(start=start, text=cue))
             last_text = cue
     return segments
+
+
+import tempfile
+from pathlib import Path
+
+
+class TranscriptUnavailable(Exception):
+    """No usable English captions were found for the video."""
+
+
+def _fmt_upload_date(raw: str | None) -> str | None:
+    if not raw or len(raw) != 8:
+        return None
+    return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
+def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
+    if not vtt_path.exists():
+        raise TranscriptUnavailable(url)
+    segments = parse_vtt(vtt_path.read_text())
+    if not segments:
+        raise TranscriptUnavailable(url)
+    return TranscriptResult(
+        url=url,
+        video_id=info.get("id", ""),
+        title=info.get("title", ""),
+        upload_date=_fmt_upload_date(info.get("upload_date")),
+        segments=segments,
+    )
+
+
+def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> TranscriptResult:
+    import yt_dlp
+
+    ctx = tempfile.TemporaryDirectory() if tmp_dir is None else None
+    work = Path(tmp_dir) if tmp_dir is not None else Path(ctx.name)
+    try:
+        opts = {
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en", "en-US", "en-orig"],
+            "subtitlesformat": "vtt",
+            "skip_download": True,
+            "outtmpl": str(work / "%(id)s.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+        vid = info.get("id", "")
+        candidates = sorted(work.glob(f"{vid}*.vtt"))
+        if not candidates:
+            raise TranscriptUnavailable(url)
+        return _result_from_info(url=url, info=info, vtt_path=candidates[0])
+    finally:
+        if ctx is not None:
+            ctx.cleanup()
