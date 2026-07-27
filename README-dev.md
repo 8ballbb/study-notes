@@ -36,3 +36,21 @@ ffmpeg runs in a throwaway container (no host install). Pre-pull the image:
 Because Colima only mounts your home directory, frame I/O must live under
 `$HOME` (the vault frames dir does). Tests that touch ffmpeg are marked
 `docker` and use a work dir under the repo.
+
+## MCP server (for Claude Code)
+
+Run standalone (stdio):
+
+    STUDY_NOTES_CONFIG=config.toml uv run python -m study_notes.mcp_server
+
+Register with Claude Code via an MCP config JSON (used by Plan 3's orchestrator):
+
+    {
+      "mcpServers": {
+        "study-notes-tools": {
+          "command": "uv",
+          "args": ["run", "python", "-m", "study_notes.mcp_server"],
+          "env": { "STUDY_NOTES_CONFIG": "config.toml" }
+        }
+      }
+    }
