@@ -21,6 +21,15 @@ class Context:
 _ctx: Context | None = None
 
 
+def _validate_write_action(action: str, target_note: str | None) -> None:
+    if action not in ("new_note", "merge"):
+        raise ValueError(f"invalid action: {action!r} (expected 'new_note' or 'merge')")
+    if action == "merge" and not target_note:
+        raise ValueError("action='merge' requires target_note")
+    if action == "new_note" and target_note:
+        raise ValueError("target_note is only valid with action='merge'")
+
+
 def build_context(config: Config) -> Context:
     from study_notes.db import connect
     from study_notes.embedding import BGEM3Embedder
@@ -87,7 +96,12 @@ def extract_frame(video_url: str, timestamp: str, prefix: str) -> dict:
 def vault_write(title: str, category: str, summary: list[str], cards: list[dict],
                 source: str, source_type: str, source_date: str | None,
                 action: str = "new_note", target_note: str | None = None) -> dict:
-    """Write a study note non-destructively. action: 'new_note' or 'merge' (into target_note)."""
+    """Write a study note non-destructively. action: 'new_note' or 'merge' (into target_note).
+
+    On merge, the note's category is taken from `target_note`'s location; the
+    `category` argument is used only for `new_note`.
+    """
+    _validate_write_action(action, target_note)
     from study_notes.models import Card, Provenance, Topic
 
     prov = Provenance(
@@ -102,7 +116,7 @@ def vault_write(title: str, category: str, summary: list[str], cards: list[dict]
         provenance=prov,
     )
     w = _context().writer
-    if action == "merge" and target_note:
+    if action == "merge":
         path = w.write_merge(target_note, topic, on=date.today())
     else:
         path = w.write_new(topic, category=category)

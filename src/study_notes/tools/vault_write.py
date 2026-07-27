@@ -13,6 +13,10 @@ class VaultWriteConflict(Exception):
     """A new note would overwrite an existing file."""
 
 
+class VaultWriteError(Exception):
+    """A write did not round-trip correctly (read-back mismatch)."""
+
+
 def slug(title: str) -> str:
     kept = "".join(c if (c.isalnum() or c in " -_") else "" for c in title)
     return " ".join(kept.split())[:80].strip() or "note"
@@ -89,7 +93,8 @@ class VaultWriter:
         _atomic_write(abs_path, markdown)
         self._add_moc_link(category, abs_path.stem)
         self._upsert(path, topic, category, markdown)
-        assert abs_path.read_text() == markdown  # read-back verification
+        if abs_path.read_text() != markdown:
+            raise VaultWriteError(f"read-back verification failed for {path}")
         return path
 
     def write_merge(self, target_path: str, topic: Topic, on: date,
@@ -103,5 +108,6 @@ class VaultWriter:
         _atomic_write(abs_path, merged)
         category = Path(target_path).parent.name
         self._upsert(target_path, topic, category, merged)
-        assert abs_path.read_text() == merged  # read-back verification
+        if abs_path.read_text() != merged:
+            raise VaultWriteError(f"read-back verification failed for {target_path}")
         return target_path
