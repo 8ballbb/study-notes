@@ -39,6 +39,7 @@ def build_options(ctx: EngineContext) -> ClaudeAgentOptions:
 async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
     options = build_options(ctx)
     final = ""
+    error: ResultMessage | None = None
     async for message in query(prompt=input_prompt, options=options):
         if isinstance(message, AssistantMessage):
             for block in message.content:
@@ -46,15 +47,19 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
                     final = block.text
         elif isinstance(message, ResultMessage):
             if message.is_error:
-                raise EngineError(
-                    f"agent run failed (subtype={message.subtype}): {message.result!r}")
-            # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
-            # `str | None` (not a dict), so a plain string check covers the
-            # observed shape. We still guard for a dict defensively in case
-            # a future SDK version nests the text under a "result" key.
-            r = message.result
-            if isinstance(r, dict):
-                final = r.get("result", final) or final
-            elif isinstance(r, str) and r:
-                final = r
+                error = message
+            else:
+                # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
+                # `str | None` (not a dict); guard for a dict defensively too.
+                r = message.result
+                if isinstance(r, dict):
+                    final = r.get("result", final) or final
+                elif isinstance(r, str) and r:
+                    final = r
+            # ResultMessage is terminal — stop iterating so the async generator
+            # closes cleanly (raising mid-iteration triggers an aclose error).
+            break
+    if error is not None:
+        raise EngineError(
+            f"agent run failed (subtype={error.subtype}): {error.result!r}")
     return final
