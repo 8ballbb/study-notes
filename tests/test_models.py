@@ -20,7 +20,7 @@ def test_topic_holds_cards_and_provenance():
 
 def test_placement_actions():
     cat = Category(name="Distributed Systems", description="d")
-    p = Placement(category=cat, action="merge", target_note="04 - Resources/Distributed Systems/Raft.md")
+    p = Placement(category=cat, action="merge", target_note="Notes/Distributed Systems/Raft.md")
     assert p.action == "merge"
     assert p.category.name == "Distributed Systems"
 

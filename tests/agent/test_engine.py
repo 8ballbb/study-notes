@@ -14,8 +14,8 @@ pytestmark = pytest.mark.integration
 def _ctx(tmp_path, db_conn):
     for n in ["orchestrator", "note_writing", "enrichment", "anti_slop"]:
         (tmp_path / f"{n}.md").write_text(n)
-    cfg = Config(vault_path=tmp_path, notes_root="04 - Resources",
-                 attachments_dir="06 - Attachments", frames_subdir="frames",
+    cfg = Config(vault_path=tmp_path, notes_root="Notes",
+                 attachments_dir="Attachments", frames_subdir="frames",
                  database_url="unused", embedding_model="fake",
                  models={"orchestrator": "opus", "extractor": "sonnet", "enricher": "haiku"},
                  prompts={"orchestrator": str(tmp_path / "orchestrator.md"),

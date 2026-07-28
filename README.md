@@ -96,8 +96,8 @@ uv run study-notes reindex
 
 ```toml
 vault_path = "/Users/you/vault"
-notes_root = "04 - Resources"          # categories are folders under here
-attachments_dir = "06 - Attachments"
+notes_root = "Notes"                   # categories are folders under here
+attachments_dir = "Attachments"
 frames_subdir = "frames"
 
 [database]
@@ -129,15 +129,15 @@ The tool owns a simple, PARA-informed structure. Categories are folders, each wi
 
 ```
 <vault>/
-  04 - Resources/
+  Notes/
     <Category>/
-      <Category>.md        # category index (MOC)
+      <Category>.md        # category index (MOC) — links every note in the category
       <Note>.md            # a study note (Markdown + frontmatter)
-  06 - Attachments/
+  Attachments/
     frames/                # extracted video frames
 ```
 
-Every note carries provenance frontmatter (`source`, `source_date`, `captured_at`, …) so its origin — and any future updates — stay traceable.
+Every note carries provenance frontmatter (`source`, `source_date`, `captured_at`, …) so its origin — and any future updates — stay traceable. `study-notes reindex` resyncs both the search index **and** the category index notes from what's actually on disk, so it doubles as a "clean up the vault" command if you've moved, renamed, or deleted notes in Obsidian.
 
 ## Architecture
 

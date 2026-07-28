@@ -13,8 +13,8 @@ pytestmark = pytest.mark.integration
 
 def _config(vault: Path) -> Config:
     return Config(
-        vault_path=vault, notes_root="04 - Resources",
-        attachments_dir="06 - Attachments", frames_subdir="frames",
+        vault_path=vault, notes_root="Notes",
+        attachments_dir="Attachments", frames_subdir="frames",
         database_url="unused", embedding_model="fake",
         models={}, prompts={}, dry_run=False,
     )
@@ -39,7 +39,7 @@ def test_write_new_creates_folder_moc_and_note(tmp_path, db_conn):
     note_file = tmp_path / path
     assert note_file.exists()
     assert "title: Raft" in note_file.read_text()
-    moc = tmp_path / "04 - Resources/Distributed Systems/Distributed Systems.md"
+    moc = tmp_path / "Notes/Distributed Systems/Distributed Systems.md"
     assert moc.exists()
     assert f"[[{Path(path).stem}]]" in moc.read_text()  # MOC links the note
 
@@ -72,7 +72,7 @@ def test_write_new_upserts_into_index(tmp_path, db_conn):
 def test_write_merge_missing_target_raises(tmp_path, db_conn):
     w = _writer(tmp_path, db_conn)
     with pytest.raises(FileNotFoundError):
-        w.write_merge("04 - Resources/DS/Nope.md", _topic(), on=date(2026, 7, 27))
+        w.write_merge("Notes/DS/Nope.md", _topic(), on=date(2026, 7, 27))
 
 
 def test_write_new_rejects_category_traversal(tmp_path, db_conn):

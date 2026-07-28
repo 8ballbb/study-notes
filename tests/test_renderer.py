@@ -26,18 +26,18 @@ def test_render_card_inline_for_short():
 
 def test_render_card_multiline_with_frame():
     c = Card("What triggers a new term?", "A failed election or leader timeout.", timestamp="00:14:32")
-    out = render_card(c, frame_path="06 - Attachments/frames/raft_00-14-32.jpg")
+    out = render_card(c, frame_path="Attachments/frames/raft_00-14-32.jpg")
     assert out == (
         "What triggers a new term?\n"
         "?\n"
         "A failed election or leader timeout.\n"
-        "![[06 - Attachments/frames/raft_00-14-32.jpg]]"
+        "![[Attachments/frames/raft_00-14-32.jpg]]"
     )
 
 
 def test_render_note_has_frontmatter_and_sections():
     md = render_note(_topic(), category="Distributed Systems",
-                     frame_paths={1: "06 - Attachments/frames/raft_00-14-32.jpg"})
+                     frame_paths={1: "Attachments/frames/raft_00-14-32.jpg"})
     assert md.startswith("---\n")
     assert "title: Raft Consensus" in md
     assert "category: Distributed Systems" in md
@@ -51,7 +51,7 @@ def test_render_note_has_frontmatter_and_sections():
     assert "- Leader election picks one leader per term." in md
     assert "## Study cards" in md
     assert "What is a term in Raft?::A logical clock period with one leader." in md
-    assert "![[06 - Attachments/frames/raft_00-14-32.jpg]]" in md
+    assert "![[Attachments/frames/raft_00-14-32.jpg]]" in md
 
 
 def test_render_update_section_is_dated():

@@ -1,6 +1,6 @@
 vault_path = "/tmp/vault"
-notes_root = "04 - Resources"
-attachments_dir = "06 - Attachments"
+notes_root = "Notes"
+attachments_dir = "Attachments"
 frames_subdir = "frames"
 
 [database]

@@ -13,12 +13,12 @@ def test_lookup_miss_returns_none(db_conn):
 def test_record_then_lookup_roundtrips(db_conn):
     log = IngestLog(db_conn)
     log.record("youtube:772CUg2xYAo", "youtube", "https://youtu.be/772CUg2xYAo",
-               ["04 - Resources/Web APIs/HTTP Status Codes.md"])
+               ["Notes/Web APIs/HTTP Status Codes.md"])
     rec = log.lookup("youtube:772CUg2xYAo")
     assert rec == IngestRecord(
         source_id="youtube:772CUg2xYAo", source_type="youtube",
         origin="https://youtu.be/772CUg2xYAo",
-        note_paths=["04 - Resources/Web APIs/HTTP Status Codes.md"],
+        note_paths=["Notes/Web APIs/HTTP Status Codes.md"],
     )
 
 

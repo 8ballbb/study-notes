@@ -14,8 +14,8 @@ pytestmark = pytest.mark.integration
 
 
 def _ctx(tmp_path, db_conn):
-    cfg = Config(vault_path=tmp_path, notes_root="04 - Resources",
-                 attachments_dir="06 - Attachments", frames_subdir="frames",
+    cfg = Config(vault_path=tmp_path, notes_root="Notes",
+                 attachments_dir="Attachments", frames_subdir="frames",
                  database_url="unused", embedding_model="fake",
                  models={}, prompts={}, dry_run=False)
     index = VaultIndex(db_conn, FakeEmbedder())
@@ -37,7 +37,7 @@ async def test_list_categories_and_search_tools(tmp_path, db_conn):
     ctx = _ctx(tmp_path, db_conn)
     ctx.index.upsert_category("Web APIs", "http")
     prov = Provenance(origin="u", input_type="youtube", captured_at=date.today(), source_date=None)
-    ctx.index.upsert_note(Note(path="04 - Resources/Web APIs/HTTP.md", title="HTTP",
+    ctx.index.upsert_note(Note(path="Notes/Web APIs/HTTP.md", title="HTTP",
                                category="Web APIs", content="status codes", provenance=prov))
     _, tools = build_tool_server(ctx)
 

@@ -11,8 +11,8 @@ pytestmark = pytest.mark.integration
 
 def _cfg(tmp_path):
     from study_notes.config import Config
-    return Config(vault_path=tmp_path, notes_root="04 - Resources",
-                  attachments_dir="06 - Attachments", frames_subdir="frames",
+    return Config(vault_path=tmp_path, notes_root="Notes",
+                  attachments_dir="Attachments", frames_subdir="frames",
                   database_url="unused", embedding_model="fake",
                   models={}, prompts={}, dry_run=False)
 
@@ -21,7 +21,7 @@ def _seed_note(index, source):
     prov = Provenance(origin=source, input_type="youtube",
                       captured_at=date.today(), source_date=None)
     index.upsert_category("Web APIs")
-    index.upsert_note(Note(path="04 - Resources/Web APIs/HTTP.md", title="HTTP",
+    index.upsert_note(Note(path="Notes/Web APIs/HTTP.md", title="HTTP",
                            category="Web APIs", content="status codes", provenance=prov))
 
 
@@ -68,7 +68,7 @@ def test_add_runs_records_and_returns_paths(db_conn, tmp_path):
     res = add(url, config=_cfg(tmp_path), index=index, ingest_log=log,
               run_engine=fake_engine)
     assert res.status == "ingested"
-    assert res.note_paths == ["04 - Resources/Web APIs/HTTP.md"]
+    assert res.note_paths == ["Notes/Web APIs/HTTP.md"]
     assert log.lookup("youtube:772CUg2xYAo").note_paths == res.note_paths  # recorded
 
 
