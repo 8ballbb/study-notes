@@ -1,3 +1,4 @@
+import logging
 import re
 from dataclasses import dataclass
 
@@ -136,22 +137,26 @@ def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None,
         if candidates:
             return _result_from_info(url=url, info=info, vtt_path=_pick_vtt(candidates, vid))
         if whisper_model:
-            from study_notes.tools.frames import _docker_ffmpeg
-            aopts = quiet_opts({"format": "bestaudio/best",
-                                "outtmpl": str(work / "%(id)s.%(ext)s")})
-            with stdout_to_stderr(), yt_dlp.YoutubeDL(aopts) as ydl:
-                info = ydl.extract_info(url, download=True)
-            src = sorted(work.glob(f"{info.get('id','')}*"))
-            if src:
-                wav = work / "audio16k.wav"
-                _docker_ffmpeg(work, ["-i", f"/work/{src[0].name}", "-vn", "-ac", "1",
-                                      "-ar", "16000", f"/work/{wav.name}", "-y"])
-                try:
+            # Any failure in the local-Whisper fallback (download, ffmpeg, model)
+            # degrades gracefully to TranscriptUnavailable.
+            try:
+                from study_notes.tools.frames import _docker_ffmpeg
+                aopts = quiet_opts({"format": "bestaudio/best",
+                                    "outtmpl": str(work / "%(id)s.%(ext)s")})
+                with stdout_to_stderr(), yt_dlp.YoutubeDL(aopts) as ydl:
+                    ainfo = ydl.extract_info(url, download=True)
+                aid = ainfo.get("id", "")
+                src = sorted(work.glob(f"{aid}*")) if aid else []
+                if src:
+                    wav = work / "audio16k.wav"
+                    _docker_ffmpeg(work, ["-i", f"/work/{src[0].name}", "-vn", "-ac", "1",
+                                          "-ar", "16000", f"/work/{wav.name}", "-y"])
                     out = transcribe_audio_local(wav, whisper_model)
-                    return _segments_to_result(url, info.get("id",""), info.get("title",""),
-                                               _fmt_upload_date(info.get("upload_date")), out)
-                except Exception:
-                    pass  # fall through to TranscriptUnavailable
+                    return _segments_to_result(url, aid, ainfo.get("title", ""),
+                                               _fmt_upload_date(ainfo.get("upload_date")), out)
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    "whisper fallback failed for %s: %s", url, e)
         raise TranscriptUnavailable(url)
     finally:
         if ctx is not None:
