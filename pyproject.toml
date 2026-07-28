@@ -10,10 +10,11 @@ dependencies = [
     "torch>=2.4",
     "mcp>=1.2,<2",
     "yt-dlp>=2025.1.1",
+    "claude-agent-sdk>=0.1.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
 
 [project.scripts]
 study-notes = "study_notes.cli:main"
@@ -28,9 +29,11 @@ force-include = { "src/study_notes/schema.sql" = "study_notes/schema.sql" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+asyncio_mode = "auto"
 markers = [
     "integration: requires a live PostgreSQL database",
     "slow: downloads/loads the BGE-M3 model",
     "network: hits the live network (YouTube)",
     "docker: requires a running Docker daemon (Colima) for ffmpeg",
+    "e2e: runs the real Claude Agent SDK engine (auth + network + DB)",
 ]

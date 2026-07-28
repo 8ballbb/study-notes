@@ -1,12 +1,13 @@
 import argparse
-import json
+import asyncio
 import sys
-import tempfile
 from pathlib import Path
 
-from study_notes.claude_runner import build_command, mcp_config_dict, run
+from study_notes.agent.context import EngineContext
+from study_notes.agent.engine import run_ingest
 from study_notes.config import Config, load_config
 from study_notes.orchestrator import add
+from study_notes.tools.vault_write import VaultWriter
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -23,12 +24,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     sub.add_parser("reindex", help="rebuild the index from the vault")
     return p.parse_args(argv)
-
-
-def build_system_prompt(config: Config, dry_run: bool) -> str:
-    procedure = Path(config.prompts["procedure"]).read_text()
-    anti_slop = Path(config.prompts["anti_slop"]).read_text()
-    return f"{procedure}\n\n{anti_slop}"
 
 
 def _make_index(config: Config):
@@ -51,33 +46,17 @@ def main(argv: list[str] | None = None) -> int:
 
     from study_notes.ingest import IngestLog
     index = _make_index(config)
+    ctx = EngineContext(config=config, index=index, writer=VaultWriter(config, index))
     ingest_log = IngestLog(index.conn)
 
-    def run_claude(payload) -> str:
-        prompt, system_prompt, dry_run = payload
-        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-            json.dump(mcp_config_dict(str(Path(ns.config).resolve())), f)
-            mcp_path = f.name
-        add_dirs = [str(config.vault_path)]
-        p = Path(ns.input)
-        if p.exists():
-            add_dirs.append(str(p.resolve().parent))
-        try:
-            cmd = build_command(
-                input_prompt=prompt, model=config.agent_model, system_prompt=system_prompt,
-                mcp_config_path=mcp_path, add_dirs=add_dirs, dry_run=dry_run,
-            )
-            return run(cmd, retry=dry_run)
-        finally:
-            Path(mcp_path).unlink(missing_ok=True)
+    def run_engine(prompt: str) -> str:
+        return asyncio.run(run_ingest(ctx, prompt))
 
-    from study_notes.claude_runner import ClaudeRunError
     try:
         res = add(ns.input, config=config, index=index, ingest_log=ingest_log,
-                  run_claude=run_claude,
-                  build_system_prompt=lambda dry: build_system_prompt(config, dry),
+                  run_engine=run_engine,
                   category=ns.category, note=ns.note, dry_run=ns.dry_run, force=ns.force)
-    except ClaudeRunError as e:
+    except Exception as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     print(res.message)

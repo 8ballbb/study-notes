@@ -97,6 +97,22 @@ class VaultWriter:
             raise VaultWriteError(f"read-back verification failed for {path}")
         return path
 
+    def write_markdown(self, title: str, category: str, markdown: str,
+                       provenance) -> str:
+        self._validate_category(category)
+        self._ensure_category(category)
+        path = self.note_path(category, title)
+        abs_path = self._abs_within_vault(path)
+        if abs_path.exists():
+            raise VaultWriteConflict(path)
+        _atomic_write(abs_path, markdown)
+        self._add_moc_link(category, abs_path.stem)
+        self.index.upsert_note(Note(path=path, title=title, category=category,
+                                    content=markdown, provenance=provenance))
+        if abs_path.read_text() != markdown:
+            raise VaultWriteError(f"read-back verification failed for {path}")
+        return path
+
     def write_merge(self, target_path: str, topic: Topic, on: date,
                     frame_paths: dict[int, str] | None = None) -> str:
         abs_path = self._abs_within_vault(target_path)
