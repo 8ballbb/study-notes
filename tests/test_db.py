@@ -27,3 +27,19 @@ def test_insert_note_row(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT title FROM notes WHERE path = %s;", ("a/Raft.md",))
         assert cur.fetchone()[0] == "Raft"
+
+
+def test_connect_and_prepare_creates_schema_on_fresh_db(db_conn):
+    from study_notes.db import connect_and_prepare
+    from tests.conftest import TEST_DB_URL
+
+    with db_conn.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS notes, categories, sources CASCADE;")
+    db_conn.commit()
+
+    conn = connect_and_prepare(TEST_DB_URL)
+    with conn.cursor() as cur:
+        cur.execute("SELECT to_regclass('public.notes'), to_regclass('public.sources');")
+        notes, sources = cur.fetchone()
+    conn.close()
+    assert notes == "notes" and sources == "sources"

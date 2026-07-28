@@ -27,11 +27,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def _make_index(config: Config):
-    from study_notes.db import connect
+    from study_notes.db import connect_and_prepare
     from study_notes.embedding import BGEM3Embedder
     from study_notes.vault_index import VaultIndex
 
-    return VaultIndex(connect(config.database_url), BGEM3Embedder(config.embedding_model))
+    return VaultIndex(connect_and_prepare(config.database_url),
+                      BGEM3Embedder(config.embedding_model))
 
 
 def main(argv: list[str] | None = None) -> int:

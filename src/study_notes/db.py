@@ -18,3 +18,10 @@ def apply_schema(conn: psycopg.Connection) -> None:
     with conn.cursor() as cur:
         cur.execute(sql)
     conn.commit()
+
+
+def connect_and_prepare(database_url: str) -> psycopg.Connection:
+    """Connect and ensure the schema exists (idempotent) — the production entry point."""
+    conn = connect(database_url)
+    apply_schema(conn)
+    return conn
