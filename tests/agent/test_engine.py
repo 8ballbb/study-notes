@@ -37,3 +37,35 @@ def test_build_options_wires_models_agents_tools(tmp_path, db_conn):
     assert "mcp__study-notes__vault_write" in opts.allowed_tools
     assert "WebSearch" in opts.allowed_tools
     assert opts.permission_mode == "bypassPermissions"
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_raises_on_error_result(tmp_path, db_conn, monkeypatch):
+    from claude_agent_sdk import ResultMessage
+
+    from study_notes.agent import engine
+    from study_notes.agent.engine import EngineError, run_ingest
+
+    async def fake_query(*, prompt, options):
+        yield ResultMessage(subtype="error_max_turns", duration_ms=1, duration_api_ms=1,
+                            is_error=True, num_turns=1, session_id="s", result="boom")
+
+    monkeypatch.setattr(engine, "query", fake_query)
+    with pytest.raises(EngineError):
+        await run_ingest(_ctx(tmp_path, db_conn), "go")
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_returns_text_on_success(tmp_path, db_conn, monkeypatch):
+    from claude_agent_sdk import ResultMessage
+
+    from study_notes.agent import engine
+    from study_notes.agent.engine import run_ingest
+
+    async def fake_query(*, prompt, options):
+        yield ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1,
+                            is_error=False, num_turns=1, session_id="s", result="the plan")
+
+    monkeypatch.setattr(engine, "query", fake_query)
+    out = await run_ingest(_ctx(tmp_path, db_conn), "go")
+    assert out == "the plan"

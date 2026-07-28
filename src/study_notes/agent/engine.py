@@ -12,6 +12,10 @@ from study_notes.agent.agents import build_agents
 from study_notes.agent.context import EngineContext
 from study_notes.agent.tools import build_tool_server
 
+class EngineError(Exception):
+    """The agent run ended in an error result."""
+
+
 _SN = "mcp__study-notes__"
 _TOOLS = [f"{_SN}{n}" for n in (
     "fetch_youtube_transcript", "list_categories", "vault_search",
@@ -41,6 +45,9 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
                 if isinstance(block, TextBlock):
                     final = block.text
         elif isinstance(message, ResultMessage):
+            if message.is_error:
+                raise EngineError(
+                    f"agent run failed (subtype={message.subtype}): {message.result!r}")
             # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
             # `str | None` (not a dict), so a plain string check covers the
             # observed shape. We still guard for a dict defensively in case
