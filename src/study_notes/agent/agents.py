@@ -16,7 +16,7 @@ def build_agents(config: Config) -> dict[str, AgentDefinition]:
         description="Writes one finished study note from a topic's source slice.",
         prompt=f"{note_writing}\n\n{anti_slop}",
         model=config.models["extractor"],
-        tools=[f"{_SN}extract_frame", f"{_SN}check_slop"],
+        tools=["Read", f"{_SN}select_keyframes", f"{_SN}keep_frame"],
     )
     enricher = AgentDefinition(
         description="Researches a topic online and returns cited additions.",

@@ -18,3 +18,13 @@ You are given one topic's source material (and maybe a neighbor note to match in
   source, source_type, source_date, captured_at). Do not invent facts beyond the source and the
   enrichment you are given.
 - Follow the anti-slop guide.
+
+## Visuals (when given a video window + frame budget)
+1. Call `select_keyframes(video_path, start, end, budget)` for your topic's window — this returns
+   visually-distinct candidate frames.
+2. **Read** each candidate image. Transcribe the useful on-screen content INTO the note text —
+   a diagram's structure, a slide's points, on-screen code/formulas. The note must stand alone
+   without the images.
+3. `keep_frame(candidate_path, prefix, timestamp)` for the FEW frames genuinely worth seeing (a
+   clean diagram, a key slide) and embed each with `![[<embed_path>]]`. Discard the rest — do not
+   embed redundant or low-value frames.

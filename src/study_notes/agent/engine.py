@@ -19,7 +19,7 @@ class EngineError(Exception):
 _SN = "mcp__study-notes__"
 _TOOLS = [f"{_SN}{n}" for n in (
     "fetch_youtube_transcript", "list_categories", "vault_search",
-    "extract_frame", "vault_write", "check_slop",
+    "prepare_video", "select_keyframes", "keep_frame", "vault_write", "check_slop",
 )]
 
 
@@ -30,7 +30,7 @@ def build_options(ctx: EngineContext) -> ClaudeAgentOptions:
         system_prompt=Path(ctx.config.prompts["orchestrator"]).read_text(),
         agents=build_agents(ctx.config),
         mcp_servers={"study-notes": server},
-        allowed_tools=[*_TOOLS, "WebSearch", "WebFetch"],
+        allowed_tools=[*_TOOLS, "WebSearch", "WebFetch", "Read"],
         permission_mode="bypassPermissions",
         cwd=str(ctx.config.vault_path),
     )

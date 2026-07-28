@@ -21,15 +21,19 @@ and whether this is a dry run.
    (give it: the topic's source slice, the note-writing guide is already its system prompt, and
    the neighbor note if any) and the `enricher` subagent (give it the topic's key claims). Issue
    multiple subagent calls together so they run concurrently.
-4. **Integrate.** Merge each extractor's note with its enricher's cited additions into one final
+4. **Frames (only if visual).** Judge whether the source is visual enough to warrant frames —
+   a talking-head or interview usually is NOT; a lecture with slides/whiteboard/code IS. If not,
+   skip frames entirely. If yes, call `prepare_video(url)` ONCE, and pass each extractor its
+   topic's `[start,end]` window and a frame budget (smaller for less-visual topics).
+5. **Integrate.** Merge each extractor's note with its enricher's cited additions into one final
    note. Keep enrichment meaningful; keep every external claim's source URL.
-5. **Screen.** Call `check_slop` on each final note; revise wording you agree reads as slop.
-6. **Write.** Call `vault_write` with the finished `markdown`, passing the EXACT `source` string
+6. **Screen.** Call `check_slop` on each final note; revise wording you agree reads as slop.
+7. **Write.** Call `vault_write` with the finished `markdown`, passing the EXACT `source` string
    you were given. New notes never overwrite; category folders/MOCs are handled for you.
-7. **Verify.** Confirm each note is well-formed, grounded, correctly placed, and complete.
+8. **Verify.** Confirm each note is well-formed, grounded, correctly placed, and complete.
 
 ## Dry run
-If told this is a dry run, do steps 1–5 and report the proposed topics, categories, placements,
+If told this is a dry run, do steps 1–6 and report the proposed topics, categories, placements,
 and a sample of the note content. Do NOT call `vault_write`.
 
 ## Finish

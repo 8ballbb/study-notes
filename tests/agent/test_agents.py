@@ -25,3 +25,6 @@ def test_build_agents_sets_models_and_prompts(tmp_path):
     assert agents["enricher"].model == "haiku"
     assert "ENRICH" in agents["enricher"].prompt
     assert "WebSearch" in agents["enricher"].tools
+    assert "Read" in agents["extractor"].tools
+    assert "mcp__study-notes__select_keyframes" in agents["extractor"].tools
+    assert "mcp__study-notes__keep_frame" in agents["extractor"].tools

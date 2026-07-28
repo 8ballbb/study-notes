@@ -37,6 +37,10 @@ def test_build_options_wires_models_agents_tools(tmp_path, db_conn):
     assert "mcp__study-notes__vault_write" in opts.allowed_tools
     assert "WebSearch" in opts.allowed_tools
     assert opts.permission_mode == "bypassPermissions"
+    assert "mcp__study-notes__prepare_video" in opts.allowed_tools
+    assert "mcp__study-notes__keep_frame" in opts.allowed_tools
+    assert "Read" in opts.allowed_tools
+    assert "mcp__study-notes__extract_frame" not in opts.allowed_tools
 
 
 @pytest.mark.asyncio
