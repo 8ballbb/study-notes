@@ -18,7 +18,7 @@ Rough priority: 🔴 worth doing soon · 🟡 nice to have · 🟢 someday / may
 
 ## Maintenance & polish (flagged during the build)
 
-- 🟡 **Category management helpers.** The model names categories and tries to reuse existing ones, but near-duplicates can accumulate over time (`Web APIs` / `APIs` / `HTTP`). Add `study-notes categories` (list) and `study-notes merge-category <from> <to>` (move notes + re-point the index). Manual merges in Obsidian are already picked up by `reindex`.
+- 🟡 **Category intelligence.** The model names categories and tries to reuse existing ones, but near-duplicates accumulate over time (`Web APIs` / `APIs` / `HTTP`). Make categories carry a description the model maintains, feed those descriptions + representative notes into the placement decision so it reuses categories better, and add `study-notes categories` (list) and `study-notes merge-category <from> <to>` (move notes + re-point the index). Manual merges in Obsidian are already picked up by `reindex`. *Keeps the vault coherent as it grows.*
 - 🟡 **Per-category frame subfolders.** All frames land in one flat `Attachments/frames/` pile. Group them per category or per note as the vault grows.
 - 🟢 **Note filename slug collisions.** Two notes whose titles slug to the same filename would raise `VaultWriteConflict`. Rare, but a disambiguation suffix (or including a short hash) would make it robust.
 - 🟢 **Top-level vault index (`Home.md`).** A generated home note linking all category index notes, for navigation.
@@ -26,6 +26,8 @@ Rough priority: 🔴 worth doing soon · 🟡 nice to have · 🟢 someday / may
 
 ## Enhancements
 
+- 🟡 **Auto-link notes into a knowledge graph.** Notes sit siloed in category folders; the payoff of Obsidian is connections. Use the existing BGE-M3 + hybrid index — at write time and as a `study-notes link` pass — to insert `[[wikilinks]]` to genuinely related existing notes, **including across categories** (unlike the placement search, which is deliberately category-scoped). Compounds in value as the vault grows. *High leverage, reuses infrastructure already built.*
+- 🟡 **Ingest more than YouTube — articles & podcasts.** Documents technically work (Claude reads them) but aren't exercised, and two big study inputs are missing: web articles (a non-YouTube URL → fetch + readability) and podcasts/audio (→ transcript). Make the pipeline source-type-aware so "study anything you read or listen to" is real. *Articles are small; audio is larger (needs transcription).*
 - 🟡 **Interactive / "Claude drives the tools" mode.** The MCP server (`mcp_server.py`) is retained but unused by the CLI. Wire it up as an optional interactive mode for exploring the vault by chat.
 - 🟢 **Anki export.** As an alternative to in-vault Spaced-Repetition cards, export drill-worthy cards to an `.apkg`/CSV.
 - 🟢 **Enrichment controls.** Config knobs for how aggressive web research is (max additions, trusted-domain allowlist).
