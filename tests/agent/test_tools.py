@@ -30,6 +30,14 @@ async def _call(tools, name, args):
     return await tools[name](args)
 
 
+def test_tool_server_has_new_frame_tools(tmp_path, db_conn):
+    from study_notes.agent.tools import build_tool_server
+
+    _, fns = build_tool_server(_ctx(tmp_path, db_conn))
+    assert {"prepare_video", "select_keyframes", "keep_frame"} <= set(fns)
+    assert "extract_frame" not in fns
+
+
 @pytest.mark.asyncio
 async def test_list_categories_and_search_tools(tmp_path, db_conn):
     from study_notes.agent.tools import build_tool_server

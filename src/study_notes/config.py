@@ -1,5 +1,5 @@
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -14,6 +14,8 @@ class Config:
     models: dict[str, str]
     prompts: dict[str, str]
     dry_run: bool
+    frames: dict = field(default_factory=dict)
+    whisper_model: str | None = None
 
 
 def load_config(path: Path) -> Config:
@@ -30,4 +32,6 @@ def load_config(path: Path) -> Config:
         models=dict(data.get("models", {})),
         prompts=dict(data["prompts"]),
         dry_run=bool(data["run"]["dry_run"]),
+        frames=dict(data.get("frames", {})),
+        whisper_model=data.get("whisper", {}).get("model"),
     )

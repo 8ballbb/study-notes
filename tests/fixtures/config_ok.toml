@@ -22,3 +22,10 @@ anti_slop = "prompts/anti-slop.md"
 
 [run]
 dry_run = false
+
+[frames]
+budget = 10
+enabled = true
+
+[whisper]
+model = "mlx-community/whisper-small"

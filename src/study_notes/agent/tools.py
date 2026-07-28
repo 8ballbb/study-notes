@@ -1,12 +1,14 @@
 import json
 from datetime import date
+from pathlib import Path
 
 from claude_agent_sdk import create_sdk_mcp_server, tool
 
 from study_notes.agent.context import EngineContext
 from study_notes.models import Provenance
 from study_notes.slop_check import slop_check
-from study_notes.tools import frames, search, youtube
+from study_notes.tools import frames as fr
+from study_notes.tools import search, youtube
 
 
 def _ok(payload) -> dict:
@@ -21,8 +23,10 @@ def build_tool_server(ctx: EngineContext):
     # functions themselves in `fns` so tests (and other in-process callers)
     # can `await tools[name](args)` directly.
 
+    frames_dir = ctx.config.vault_path / ctx.config.attachments_dir / ctx.config.frames_subdir
+
     async def fetch_youtube_transcript(args: dict) -> dict:
-        r = youtube.fetch_youtube_transcript(args["url"])
+        r = youtube.fetch_youtube_transcript(args["url"], whisper_model=ctx.config.whisper_model)
         return _ok({"url": r.url, "video_id": r.video_id, "title": r.title,
                     "upload_date": r.upload_date,
                     "segments": [{"start": s.start, "text": s.text} for s in r.segments]})
@@ -33,17 +37,21 @@ def build_tool_server(ctx: EngineContext):
     async def vault_search(args: dict) -> dict:
         return _ok(search.vault_search(ctx.index, args["query"], args["category"]))
 
-    async def extract_frame(args: dict) -> dict:
-        c = ctx.config
-        fdir = c.vault_path / c.attachments_dir / c.frames_subdir
-        fdir.mkdir(parents=True, exist_ok=True)
-        video = frames.download_video(args["video_url"], fdir)
-        out = fdir / frames.frame_filename(args["prefix"], args["timestamp"])
-        try:
-            frames.extract_frame(video, args["timestamp"], out)
-        finally:
-            video.unlink(missing_ok=True)
-        return _ok({"embed_path": f"{c.attachments_dir}/{c.frames_subdir}/{out.name}"})
+    async def prepare_video(args: dict) -> dict:
+        work = frames_dir / "_work"
+        video = fr.download_video(args["url"], work)
+        return _ok({"video_id": video.stem, "video_path": str(video)})
+
+    async def select_keyframes(args: dict) -> dict:
+        vp = Path(args["video_path"])
+        out = vp.parent / f"cands_{args['start'].replace(':', '')}_{args['end'].replace(':', '')}"
+        cands = fr.select_keyframes(vp, args["start"], args["end"], int(args["budget"]), out)
+        return _ok([{"candidate_path": str(c["path"]), "timestamp": c["timestamp"]} for c in cands])
+
+    async def keep_frame(args: dict) -> dict:
+        name = fr.keep_frame(Path(args["candidate_path"]), args["prefix"],
+                             args["timestamp"], frames_dir)
+        return _ok({"embed_path": f"{ctx.config.attachments_dir}/{ctx.config.frames_subdir}/{name}"})
 
     async def vault_write(args: dict) -> dict:
         sd = args.get("source_date") or None
@@ -60,7 +68,8 @@ def build_tool_server(ctx: EngineContext):
 
     fns = {
         "fetch_youtube_transcript": fetch_youtube_transcript, "list_categories": list_categories,
-        "vault_search": vault_search, "extract_frame": extract_frame,
+        "vault_search": vault_search, "prepare_video": prepare_video,
+        "select_keyframes": select_keyframes, "keep_frame": keep_frame,
         "vault_write": vault_write, "check_slop": check_slop,
     }
 
@@ -70,8 +79,13 @@ def build_tool_server(ctx: EngineContext):
         tool("list_categories", "List existing vault categories.", {})(list_categories),
         tool("vault_search", "Find related notes within a category.",
              {"query": str, "category": str})(vault_search),
-        tool("extract_frame", "Save the video frame at a timestamp into the vault.",
-             {"video_url": str, "timestamp": str, "prefix": str})(extract_frame),
+        tool("prepare_video", "Download the video once so frames can be selected.",
+             {"url": str})(prepare_video),
+        tool("select_keyframes",
+             "Phase 1: select visually-distinct candidate frames in a time window.",
+             {"video_path": str, "start": str, "end": str, "budget": int})(select_keyframes),
+        tool("keep_frame", "Keep a chosen candidate frame (embed it in the vault).",
+             {"candidate_path": str, "prefix": str, "timestamp": str})(keep_frame),
         tool("vault_write", "Write a finished note (markdown) into a category, non-destructively.",
              {"title": str, "category": str, "markdown": str, "source": str,
               "source_type": str, "source_date": str})(vault_write),
