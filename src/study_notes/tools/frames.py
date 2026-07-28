@@ -63,14 +63,27 @@ def _fmt_ts(seconds: float) -> str:
     return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
+def _ts_secs(hhmmss: str) -> int:
+    parts = [int(p) for p in hhmmss.split(":")]
+    while len(parts) < 3:
+        parts.insert(0, 0)
+    h, m, s = parts[-3], parts[-2], parts[-1]
+    return h * 3600 + m * 60 + s
+
+
 def select_keyframes(video_path: Path, start: str, end: str, budget: int,
                      out_dir: Path) -> list[dict]:
     """Phase 1: visually-distinct candidate frames (mpdecimate), window-scoped, budget-capped."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    if out_dir.parent.resolve() != video_path.parent.resolve():
+        raise FrameExtractionError(
+            "out_dir must be a direct subdirectory of the video's directory (single Docker mount)")
     work = video_path.parent
     rel = out_dir.name
+    start_s = _ts_secs(start)
+    dur = max(0, _ts_secs(end) - start_s)
     proc = _docker_ffmpeg(work, [
-        "-ss", start, "-to", end, "-i", f"/work/{video_path.name}",
+        "-ss", start, "-t", str(dur), "-i", f"/work/{video_path.name}",
         "-vf", "mpdecimate,scale=512:-1,showinfo", "-vsync", "vfr", "-q:v", "3",
         f"/work/{rel}/cand_%03d.jpg", "-y",
     ])
@@ -80,9 +93,9 @@ def select_keyframes(video_path: Path, start: str, end: str, budget: int,
     times = [float(t) for t in re.findall(r"pts_time:([0-9.]+)",
                                           proc.stderr.decode(errors="replace"))]
     frames = sorted(out_dir.glob("cand_*.jpg"))
-    cands = [{"path": p, "timestamp": _fmt_ts(times[i] if i < len(times) else 0.0)}
+    cands = [{"path": p, "timestamp": _fmt_ts(start_s + (times[i] if i < len(times) else 0.0))}
              for i, p in enumerate(frames)]
-    if len(cands) > budget:  # uniform subsample down to budget
+    if budget > 0 and len(cands) > budget:  # uniform subsample down to budget
         step = len(cands) / budget
         cands = [cands[int(i * step)] for i in range(budget)]
     return cands

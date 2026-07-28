@@ -54,3 +54,21 @@ def test_select_keyframes_respects_budget(scenes_video, work_dir):
     out = work_dir / "c2"; out.mkdir()
     cands = select_keyframes(scenes_video, "00:00:00", "00:00:06", budget=2, out_dir=out)
     assert len(cands) <= 2
+
+
+@pytest.mark.docker
+@needs_docker
+def test_select_keyframes_timestamps_are_absolute(scenes_video, work_dir):
+    out = work_dir / "cands_abs"; out.mkdir()
+    cands = select_keyframes(scenes_video, "00:00:02", "00:00:06", budget=10, out_dir=out)
+    assert cands
+    # window starts at 2s, so every reported timestamp must be >= 00:00:02
+    assert all(c["timestamp"] >= "00:00:02" for c in cands)
+
+
+def test_select_keyframes_rejects_out_dir_outside_video_dir(tmp_path):
+    from study_notes.tools.frames import FrameExtractionError
+    video = tmp_path / "vid" / "v.mp4"; video.parent.mkdir(); video.write_bytes(b"x")
+    out = tmp_path / "elsewhere"; out.mkdir()
+    with pytest.raises(FrameExtractionError):
+        select_keyframes(video, "00:00:00", "00:00:02", budget=5, out_dir=out)
