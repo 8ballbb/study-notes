@@ -11,6 +11,8 @@ dependencies = [
     "mcp>=1.2,<2",
     "yt-dlp>=2025.1.1",
     "claude-agent-sdk>=0.1.0",
+    "mlx-whisper>=0.4",
+    "soundfile>=0.12",
 ]
 
 [project.optional-dependencies]

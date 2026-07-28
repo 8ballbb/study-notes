@@ -89,7 +89,31 @@ def _pick_vtt(candidates: list[Path], video_id: str) -> Path:
     return sorted(candidates, key=key)[0]
 
 
-def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> TranscriptResult:
+def _secs_to_hhmmss(seconds: float) -> str:
+    s = int(seconds)
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
+def _segments_to_result(url: str, video_id: str, title: str,
+                        upload_date: str | None, whisper_out: dict) -> TranscriptResult:
+    segs = [TranscriptSegment(start=_secs_to_hhmmss(s["start"]), text=s["text"].strip())
+            for s in whisper_out.get("segments", []) if s.get("text", "").strip()]
+    if not segs:
+        raise TranscriptUnavailable(url)
+    return TranscriptResult(url=url, video_id=video_id, title=title,
+                            upload_date=upload_date, segments=segs)
+
+
+def transcribe_audio_local(wav_path: Path, model: str) -> dict:
+    import mlx_whisper
+    import soundfile as sf
+
+    audio, _ = sf.read(str(wav_path), dtype="float32")  # 16 kHz mono
+    return mlx_whisper.transcribe(audio, path_or_hf_repo=model)
+
+
+def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None,
+                            whisper_model: str | None = None) -> TranscriptResult:
     import yt_dlp
 
     from study_notes.tools._ytdlp import quiet_opts, stdout_to_stderr
@@ -109,9 +133,26 @@ def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None) -> Transc
             info = ydl.extract_info(url, download=True)
         vid = info.get("id", "")
         candidates = list(work.glob(f"{vid}*.vtt"))
-        if not candidates:
-            raise TranscriptUnavailable(url)
-        return _result_from_info(url=url, info=info, vtt_path=_pick_vtt(candidates, vid))
+        if candidates:
+            return _result_from_info(url=url, info=info, vtt_path=_pick_vtt(candidates, vid))
+        if whisper_model:
+            from study_notes.tools.frames import _docker_ffmpeg
+            aopts = quiet_opts({"format": "bestaudio/best",
+                                "outtmpl": str(work / "%(id)s.%(ext)s")})
+            with stdout_to_stderr(), yt_dlp.YoutubeDL(aopts) as ydl:
+                info = ydl.extract_info(url, download=True)
+            src = sorted(work.glob(f"{info.get('id','')}*"))
+            if src:
+                wav = work / "audio16k.wav"
+                _docker_ffmpeg(work, ["-i", f"/work/{src[0].name}", "-vn", "-ac", "1",
+                                      "-ar", "16000", f"/work/{wav.name}", "-y"])
+                try:
+                    out = transcribe_audio_local(wav, whisper_model)
+                    return _segments_to_result(url, info.get("id",""), info.get("title",""),
+                                               _fmt_upload_date(info.get("upload_date")), out)
+                except Exception:
+                    pass  # fall through to TranscriptUnavailable
+        raise TranscriptUnavailable(url)
     finally:
         if ctx is not None:
             ctx.cleanup()
