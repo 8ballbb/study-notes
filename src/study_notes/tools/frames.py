@@ -46,8 +46,9 @@ def download_video(url: str, out_dir: Path) -> Path:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     opts = quiet_opts({
-        # single progressive mp4 stream -> no ffmpeg merge step needed
-        "format": "best[ext=mp4]/mp4/best",
+        # Single progressive mp4 stream (no ffmpeg merge step). Cap at 480p: frames are
+        # downscaled to 512px anyway, so taller streams are wasted download time/bytes.
+        "format": "best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/mp4/best",
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
     })
     with stdout_to_stderr(), yt_dlp.YoutubeDL(opts) as ydl:

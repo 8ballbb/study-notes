@@ -19,12 +19,26 @@ You are given one topic's source material (and maybe a neighbor note to match in
   enrichment you are given.
 - Follow the anti-slop guide.
 
-## Visuals (when given a video window + frame budget)
-1. Call `select_keyframes(video_path, start, end, budget)` for your topic's window — this returns
-   visually-distinct candidate frames.
-2. **Read** each candidate image. Transcribe the useful on-screen content INTO the note text —
-   a diagram's structure, a slide's points, on-screen code/formulas. The note must stand alone
-   without the images.
-3. `keep_frame(candidate_path, prefix, timestamp)` for the FEW frames genuinely worth seeing (a
-   clean diagram, a key slide) and embed each with `![[<embed_path>]]`. Discard the rest — do not
-   embed redundant or low-value frames.
+## Visuals (when given a `video_path` + window + frame budget)
+Work text-first, then target frames only where they add. Do NOT scan the whole window.
+
+1. **Draft from the transcript first.** Write the teaching note from the text alone before
+   touching any video.
+2. **Find the visual-cue moments.** Re-scan your timestamped transcript for the specific points
+   where a visual would genuinely add — an on-screen diagram/graph/slide/formula/code/animation,
+   or deixis ("as you see here", "this graph", "on the left", "notice that"). Collect each cue's
+   timestamp. If there are none, usually extract nothing (but see the backstop).
+3. **Extract only around each cue (narrow windows).** For each cue, call
+   `select_keyframes(video_path, start, end, budget)` on a TIGHT window: use transcript segment
+   timestamps verbatim — the cue's segment `start` as `start`, and a segment a little later as
+   `end` (do no time arithmetic; copy the timestamps that appear in your transcript). Keep the
+   per-cue budget small. `video_path` is the exact absolute path you were handed — use it verbatim.
+4. **Backstop (only if told the topic is strongly visual).** If the orchestrator flagged this
+   topic as strongly visual but step 2 found no explicit cues, take ONE light sample across the
+   window — a single `select_keyframes` call with a small budget — so a silently-shown slide
+   isn't missed.
+5. **Read, then keep only what adds.** **Read** each candidate image and transcribe its useful
+   on-screen content INTO the note text (a diagram's structure, a slide's points, on-screen
+   code/formulas) — the note must stand alone without the images. Then
+   `keep_frame(candidate_path, prefix, timestamp)` and embed with `![[<embed_path>]]` ONLY the few
+   frames that add something the text cannot. Discard redundant or low-value candidates.

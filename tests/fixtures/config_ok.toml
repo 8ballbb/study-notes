@@ -24,7 +24,7 @@ anti_slop = "prompts/anti-slop.md"
 dry_run = false
 
 [frames]
-budget = 10
+budget = 4
 enabled = true
 
 [whisper]

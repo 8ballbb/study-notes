@@ -17,7 +17,7 @@ def test_load_config_reads_all_fields():
     assert cfg.models["orchestrator"] == "claude-opus-4-8"
     assert cfg.prompts["note_writing"] == "prompts/note-writing.md"
     assert cfg.dry_run is False
-    assert cfg.frames["budget"] == 10
+    assert cfg.frames["budget"] == 4
     assert cfg.whisper_model == "mlx-community/whisper-small"
 
 

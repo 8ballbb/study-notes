@@ -27,6 +27,23 @@ def test_note_writing_guide_covers_two_phase_visuals():
     assert "embed" in t
 
 
+def test_note_writing_guide_targets_visuals_text_first():
+    # Text-first funnel: draft from text, target cue moments in narrow windows,
+    # with a backstop for strongly-visual topics that lack explicit cues.
+    t = Path("prompts/note-writing.md").read_text().lower()
+    assert "draft" in t
+    assert "cue" in t
+    assert "narrow" in t
+    assert "backstop" in t
+
+
+def test_orchestrator_forwards_exact_video_path():
+    # The lead must pass the exact video_path returned by prepare_video, not a guess.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "video_path" in t
+    assert "verbatim" in t
+
+
 def test_enrichment_guide_requires_sources():
     t = Path("prompts/enrichment.md").read_text().lower()
     assert "websearch" in t or "web search" in t
