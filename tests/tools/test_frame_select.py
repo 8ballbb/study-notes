@@ -67,3 +67,14 @@ def test_refine_respects_budget(tmp_path):
              for i in range(1, 6)]
     out = refine_candidates(cands, budget=2)
     assert len(out) == 2
+
+
+def test_build_montage_creates_image_with_cells(tmp_path):
+    from study_notes.tools.frame_select import build_montage
+    cands = [{"path": _sharp(tmp_path, f"m{i}.png", i), "timestamp": f"00:00:0{i}",
+              "index": i} for i in range(3)]
+    out = build_montage(cands, tmp_path / "montage.jpg", cols=2)
+    assert out.exists()
+    from PIL import Image
+    w, h = Image.open(out).size
+    assert w > 0 and h > 0

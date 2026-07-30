@@ -2,10 +2,13 @@
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 BLUR_FLOOR = 100.0   # variance-of-Laplacian below this = blur/transition
 DUP_DISTANCE = 10    # dHash (64-bit) Hamming distance below this = near-duplicate
+MONTAGE_COLS = 3
+
+_THUMB = 256
 
 
 def laplacian_variance(img: Image.Image) -> float:
@@ -69,3 +72,27 @@ def refine_candidates(candidates: list[dict], budget: int) -> list[dict]:
             chosen.append(nxt)
         deduped = sorted(chosen, key=lambda c: c["timestamp"])
     return [{"path": c["path"], "timestamp": c["timestamp"]} for c in deduped]
+
+
+def build_montage(candidates: list[dict], out_path: Path,
+                  cols: int = MONTAGE_COLS) -> Path:
+    thumbs = []
+    for c in candidates:
+        with Image.open(c["path"]) as im:
+            im = im.convert("RGB")
+            im.thumbnail((_THUMB, _THUMB))
+            cell = Image.new("RGB", (_THUMB, _THUMB + 18), (20, 20, 20))
+            cell.paste(im, ((_THUMB - im.width) // 2, 0))
+            ImageDraw.Draw(cell).text(
+                (4, _THUMB + 3), f"[{c['index']}] {c['timestamp']}", fill=(255, 255, 255))
+            thumbs.append(cell)
+    if not thumbs:
+        Image.new("RGB", (_THUMB, _THUMB), (20, 20, 20)).save(out_path)
+        return out_path
+    rows = (len(thumbs) + cols - 1) // cols
+    cw, ch = thumbs[0].size
+    sheet = Image.new("RGB", (cols * cw, rows * ch), (20, 20, 20))
+    for i, t in enumerate(thumbs):
+        sheet.paste(t, ((i % cols) * cw, (i // cols) * ch))
+    sheet.save(out_path, quality=85)
+    return out_path
