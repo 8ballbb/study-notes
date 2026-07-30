@@ -48,3 +48,11 @@ def test_enrichment_guide_requires_sources():
     t = Path("prompts/enrichment.md").read_text().lower()
     assert "websearch" in t or "web search" in t
     assert "source" in t and ("cite" in t or "url" in t)
+
+
+def test_note_writing_has_montage_flow_and_voice():
+    t = Path("prompts/note-writing.md").read_text().lower()
+    assert "montage" in t                 # contact-sheet selection
+    assert "index" in t                   # pick the best index
+    assert "video_id" in t                # keep_frame gets video_id
+    assert "mental picture" in t          # Feynman-plain voice cue
