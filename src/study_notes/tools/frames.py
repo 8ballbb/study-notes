@@ -106,11 +106,27 @@ def select_keyframes(video_path: Path, start: str, end: str, budget: int,
     return {"candidates": refined, "montage_path": montage_path}
 
 
-def keep_frame(candidate_path: Path, prefix: str, timestamp: str, frames_dir: Path) -> str:
-    frames_dir.mkdir(parents=True, exist_ok=True)
+def keep_frame(candidate_path: Path, prefix: str, timestamp: str,
+               video_id: str, frames_dir: Path) -> str:
+    from PIL import Image
+
+    target_dir = frames_dir / video_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    # Perceptual dedup: if a near-identical frame is already kept for this video, reuse it.
+    try:
+        with Image.open(candidate_path) as im:
+            im.load()
+            new_hash = frame_select.dhash(im)
+        for existing in sorted(target_dir.glob("*.jpg")):
+            with Image.open(existing) as ex:
+                ex.load()
+                if frame_select.hamming(new_hash, frame_select.dhash(ex)) < frame_select.DUP_DISTANCE:
+                    return existing.name
+    except Exception:
+        pass  # hash failure must never lose a frame — fall through and keep it
     name = frame_filename(prefix, timestamp)
     try:
-        shutil.copyfile(candidate_path, frames_dir / name)
+        shutil.copyfile(candidate_path, target_dir / name)
     except OSError as e:
         raise FrameExtractionError(f"keep_frame failed for {candidate_path}: {e}") from e
     return name

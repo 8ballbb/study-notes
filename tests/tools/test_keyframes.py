@@ -10,9 +10,34 @@ from study_notes.tools.frames import keep_frame, select_keyframes
 def test_keep_frame_copies_into_frames_dir(tmp_path):
     cand = tmp_path / "cand_001.jpg"; cand.write_bytes(b"\xff\xd8\xff")
     frames_dir = tmp_path / "frames"; frames_dir.mkdir()
-    name = keep_frame(cand, "raft", "00:01:23", frames_dir)
+    name = keep_frame(cand, "raft", "00:01:23", "vidabc", frames_dir)
     assert name == "raft_00-01-23.jpg"
-    assert (frames_dir / name).exists()
+    assert (frames_dir / "vidabc" / name).exists()
+
+
+def test_keep_frame_writes_under_video_id(tmp_path):
+    from PIL import Image
+    import numpy as np
+    from study_notes.tools.frames import keep_frame
+    src = tmp_path / "cand.jpg"
+    Image.fromarray(np.random.default_rng(1).integers(0, 256, (64, 64, 3)).astype("uint8")).save(src)
+    frames_dir = tmp_path / "frames"
+    name = keep_frame(src, "liver", "00:00:05", "vid123", frames_dir)
+    assert (frames_dir / "vid123" / name).exists()
+
+
+def test_keep_frame_skips_perceptual_duplicate(tmp_path):
+    from PIL import Image
+    import numpy as np
+    from study_notes.tools.frames import keep_frame
+    arr = np.random.default_rng(2).integers(0, 256, (64, 64, 3)).astype("uint8")
+    a = tmp_path / "a.jpg"; Image.fromarray(arr).save(a)
+    b = tmp_path / "b.jpg"; Image.fromarray(arr).save(b)  # identical -> duplicate
+    frames_dir = tmp_path / "frames"
+    n1 = keep_frame(a, "liver", "00:00:05", "vid1", frames_dir)
+    n2 = keep_frame(b, "liver", "00:00:09", "vid1", frames_dir)
+    assert n1 == n2  # dedup returned the existing frame, no second file
+    assert len(list((frames_dir / "vid1").glob("*.jpg"))) == 1
 
 
 needs_docker = pytest.mark.skipif(shutil.which("docker") is None, reason="docker not installed")
