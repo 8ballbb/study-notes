@@ -24,9 +24,11 @@ and whether this is a dry run.
 4. **Frames (coarse gate first, only if visual).** As a FIRST filter, judge whether the source is
    visual at all — a talking-head or interview usually is NOT; a lecture with slides/whiteboard/
    code IS. If not, skip frames entirely (no video download). If yes, call `prepare_video(url)`
-   ONCE and note the exact `video_path` it returns. Pass each extractor: that EXACT `video_path`
-   string (verbatim — never a guessed or shortened path; its `select_keyframes` needs this exact
-   absolute path), its topic's `[start,end]` window, and a small per-cue frame budget. The
+   ONCE and note both the `video_id` and the exact `video_path` it returns. Pass each extractor:
+   that EXACT `video_path` string (verbatim — never a guessed or shortened path; its
+   `select_keyframes` needs this exact absolute path), the `video_id` (its `keep_frame` call
+   requires this exact `video_id` to place frames in the per-video folder), its topic's
+   `[start,end]` window, and a small per-cue frame budget. The
    extractor itself does the fine-grained work — finding which moments within its topic actually
    need a visual and extracting only those. For a topic you judge STRONGLY visual (dense diagrams/
    slides throughout), tell the extractor a backstop sample is warranted if it finds no explicit

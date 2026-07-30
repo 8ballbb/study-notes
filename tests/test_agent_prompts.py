@@ -44,6 +44,13 @@ def test_orchestrator_forwards_exact_video_path():
     assert "verbatim" in t
 
 
+def test_orchestrator_forwards_video_id_to_extractor():
+    # The lead must pass the video_id (from prepare_video) to each extractor too,
+    # since keep_frame requires it for the per-video frame folder.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "video_id" in t
+
+
 def test_enrichment_guide_requires_sources():
     t = Path("prompts/enrichment.md").read_text().lower()
     assert "websearch" in t or "web search" in t
