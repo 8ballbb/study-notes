@@ -20,6 +20,8 @@ Write these notes like a sharp human's study notes. Cut every pattern below.
 - **Summary-recap endings:** "In conclusion," "Ultimately." End on a concrete detail.
 - **Formatting slop:** no emoji in headings, no mid-sentence bold, no header over a one-line section.
 - **Em dashes:** don't use them as a rhythm crutch.
+- **Cliché words:** delve, tapestry, leverage, seamless, elevate, boasts, underscore, "in the realm of," "it's important to note." Use plain words.
+- **Hedging:** "it's worth noting," "arguably," "to some extent," "in many ways." Commit to the claim.
 
 ## Do this instead
 - Lead with the point.
