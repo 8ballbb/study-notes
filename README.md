@@ -14,12 +14,12 @@ uv run study-notes add https://www.youtube.com/watch?v=<id>
 
 Point it at a source and it will:
 
-- **Fetch the transcript** (YouTube captions) or read the document directly.
+- **Fetch the transcript** (YouTube captions, with a local **Whisper** fallback for caption-less videos) or read the document directly.
 - **Split it into distinct topics** — one long video can become several focused notes.
-- **Write each note in whatever structure fits the content** — an explanation, a comparison table, a step-by-step, a worked example, a decision guide — composed as the material warrants, not forced into flashcards.
-- **Research each topic online** and fold in authoritative context, corrections, and examples the source skipped, with a **source URL on every external claim**.
+- **Write each note in whatever structure fits the content** — an explanation, a comparison table, a step-by-step, a worked example, a decision guide — composed as the material warrants, not forced into flashcards, in a plain, teaching **Feynman-plain voice** (with an anti-slop checker that flags AI-filler phrasing).
+- **Research each topic online** and fold in authoritative context, corrections, and examples the source skipped, with a **source URL on every external claim** (gathered under a `## Citations` section).
 - **Decide where each note belongs** — reuse an existing category or create a new one — and write it **non-destructively** (never overwrites; merges append a dated section).
-- **Grab video frames** at the moments a note references and embed them.
+- **Pull the frames that actually help** — for visual moments a note references, it selects candidate frames locally (scene-dedup + blur filter + perceptual de-duplication, keeping the *settled* frame of an animation), then *reads* them and embeds only the few that add something the text can't, transcribing their on-screen content into the note so it stands alone.
 - **Remember what it has ingested**, so re-adding the same URL/file is skipped.
 
 Everything lands as Markdown in your vault, indexed for semantic search.
@@ -113,9 +113,16 @@ enricher     = "claude-sonnet-5"       # per-topic web research
 
 [prompts]                              # versioned, editable
 orchestrator = "prompts/orchestrator.md"
-note_writing = "prompts/note-writing.md"   # how notes are written — tune "how I learn" here
+note_writing = "prompts/note-writing.md"   # how notes are written — tune "how I learn" (and the voice) here
 enrichment   = "prompts/enrichment.md"
 anti_slop    = "prompts/anti-slop.md"       # bans AI-filler phrasing
+
+[frames]
+budget = 4                             # candidate frames per visual moment (montage the model picks from)
+enabled = true                         # frame extraction on/off
+
+[whisper]
+model = "mlx-community/whisper-small"   # local, key-free fallback for caption-less videos (Apple MPS)
 
 [run]
 dry_run = false
@@ -134,25 +141,30 @@ The tool owns a simple, PARA-informed structure. Categories are folders, each wi
       <Category>.md        # category index (MOC) — links every note in the category
       <Note>.md            # a study note (Markdown + frontmatter)
   Attachments/
-    frames/                # extracted video frames
+    frames/
+      <video_id>/          # kept frames, grouped per source video (easy to clean up)
 ```
 
-Every note carries provenance frontmatter (`source`, `source_date`, `captured_at`, …) so its origin — and any future updates — stay traceable. `study-notes reindex` resyncs both the search index **and** the category index notes from what's actually on disk, so it doubles as a "clean up the vault" command if you've moved, renamed, or deleted notes in Obsidian.
+Every note carries **[OKF](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)-aligned** frontmatter — Google Cloud's Open Knowledge Format conventions: a required `type`, plus `resource` (the source URI), `timestamp`, `description`, and `tags`, alongside project fields (`category`, `source_type`, `source_date`) — so a note's origin, and any future updates, stay traceable and portable. `study-notes reindex` resyncs both the search index **and** the category index notes from what's actually on disk, so it doubles as a "clean up the vault" command if you've moved, renamed, or deleted notes in Obsidian.
 
 ## Architecture
 
 - **Retrieval** — [BGE-M3](https://huggingface.co/BAAI/bge-m3) embeddings + PostgreSQL/`pgvector` do **category-scoped hybrid search** (dense + full-text, fused with Reciprocal Rank Fusion). A search never crosses categories.
-- **Tools** — transcript fetch (`yt-dlp`), frame extraction (`ffmpeg` in a container), non-destructive vault writes, hybrid search, and an anti-slop linter — all exposed to the agents as in-process functions.
-- **Runtime** — the Python app runs on the host (BGE-M3 needs Apple's GPU); only Postgres and ffmpeg are containerised.
+- **Tools** — transcript fetch (`yt-dlp`, + local `mlx-whisper` fallback), frame candidate selection (`ffmpeg` in a container) with local refinement (`numpy`/`Pillow`: blur filter, perceptual dedup, contact-sheet montage), non-destructive vault writes, hybrid search, and an anti-slop linter — all exposed to the agents as in-process functions.
+- **Runtime** — the Python app runs on the host (BGE-M3 and Whisper need Apple's GPU); only Postgres and ffmpeg are containerised.
+- **Isolation** — the agent subprocess runs with `setting_sources=[]` + `strict_mcp_config=True`, so it does **not** inherit your host `~/.claude` settings/hooks/MCP servers; each ingest sees only this tool's prompt, agents, and in-process tools.
 
 The design and build history live under [`docs/superpowers/`](docs/superpowers/) — specs describe the *why*, plans the *how*, built test-first with review at each step.
 
 ## Development
 
 ```bash
-uv run pytest -m "not slow and not network and not ffmpeg and not docker and not e2e"  # fast suite
-uv run pytest -m e2e                                                                    # real end-to-end run
+uv run pytest -m "not slow and not docker and not e2e"   # fast, token-free suite (~3.5s)
+uv run pytest -m docker                                   # frame tests (needs Colima + ffmpeg image)
+uv run pytest -m e2e                                      # real end-to-end agentic run — SPENDS Claude tokens
 ```
+
+> **Note:** the `e2e` test drives a real agentic ingest (~2 min, costs tokens), so the default suite excludes it — run the token-free command above unless you specifically want the live end-to-end check.
 
 See [`README-dev.md`](README-dev.md) for the full test matrix and the Docker/Colima details.
 
@@ -160,7 +172,8 @@ See [`README-dev.md`](README-dev.md) for the full test matrix and the Docker/Col
 
 Deliberately deferred, not blocking:
 
-- Whisper transcription for videos without captions.
 - Temporal conflict handling (detecting when new material updates or contradicts an existing note).
 - BGE-M3 learned-sparse vectors for stronger lexical retrieval.
-- Smarter "which frame matters" selection.
+- An optional OKF *export* (converting the vault into a fully-conformant OKF bundle for other agents/tools).
+
+Recently shipped: local Whisper fallback for caption-less videos; targeted, montage-based frame selection with per-video storage; OKF-aligned note frontmatter; a Feynman-plain writing voice.
