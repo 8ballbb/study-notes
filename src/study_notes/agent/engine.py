@@ -33,6 +33,13 @@ def build_options(ctx: EngineContext) -> ClaudeAgentOptions:
         allowed_tools=[*_TOOLS, "WebSearch", "WebFetch", "Read"],
         permission_mode="bypassPermissions",
         cwd=str(ctx.config.vault_path),
+        # SDK isolation: do NOT inherit the host's ~/.claude world. Without this the
+        # subprocess loads ["user","project"] settings and picks up ambient tooling
+        # (the user's hooks, MCP servers, ScheduleWakeup/Task machinery), which both
+        # leaks unrelated tools into every ingest and destabilises teardown. Our
+        # prompt, agents, in-process MCP server, and core tools are passed directly.
+        setting_sources=[],
+        strict_mcp_config=True,
     )
 
 
