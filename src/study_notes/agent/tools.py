@@ -45,13 +45,18 @@ def build_tool_server(ctx: EngineContext):
     async def select_keyframes(args: dict) -> dict:
         vp = Path(args["video_path"])
         out = vp.parent / f"cands_{args['start'].replace(':', '')}_{args['end'].replace(':', '')}"
-        cands = fr.select_keyframes(vp, args["start"], args["end"], int(args["budget"]), out)
-        return _ok([{"candidate_path": str(c["path"]), "timestamp": c["timestamp"]} for c in cands])
+        res = fr.select_keyframes(vp, args["start"], args["end"], int(args["budget"]), out)
+        return _ok({
+            "candidates": [{"candidate_path": str(c["path"]), "timestamp": c["timestamp"],
+                            "index": c["index"]} for c in res["candidates"]],
+            "montage_path": str(res["montage_path"]),
+        })
 
     async def keep_frame(args: dict) -> dict:
         name = fr.keep_frame(Path(args["candidate_path"]), args["prefix"],
-                             args["timestamp"], frames_dir)
-        return _ok({"embed_path": f"{ctx.config.attachments_dir}/{ctx.config.frames_subdir}/{name}"})
+                             args["timestamp"], args["video_id"], frames_dir)
+        return _ok({"embed_path":
+                    f"{ctx.config.attachments_dir}/{ctx.config.frames_subdir}/{args['video_id']}/{name}"})
 
     async def vault_write(args: dict) -> dict:
         sd = args.get("source_date") or None
@@ -85,7 +90,7 @@ def build_tool_server(ctx: EngineContext):
              "Phase 1: select visually-distinct candidate frames in a time window.",
              {"video_path": str, "start": str, "end": str, "budget": int})(select_keyframes),
         tool("keep_frame", "Keep a chosen candidate frame (embed it in the vault).",
-             {"candidate_path": str, "prefix": str, "timestamp": str})(keep_frame),
+             {"candidate_path": str, "prefix": str, "timestamp": str, "video_id": str})(keep_frame),
         tool("vault_write", "Write a finished note (markdown) into a category, non-destructively.",
              {"title": str, "category": str, "markdown": str, "source": str,
               "source_type": str, "source_date": str})(vault_write),

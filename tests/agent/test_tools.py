@@ -80,3 +80,46 @@ async def test_vault_write_tool_writes_note(tmp_path, db_conn):
     })))
     assert out["path"].endswith("Raft.md")
     assert (tmp_path / out["path"]).exists()
+
+
+@pytest.mark.asyncio
+async def test_keep_frame_tool_embed_path_includes_video_id(tmp_path, db_conn, monkeypatch):
+    # keep_frame tool returns an embed path scoped under the video_id folder
+    from study_notes.agent import tools as t
+
+    monkeypatch.setattr(t.fr, "keep_frame",
+                        lambda cp, prefix, ts, vid, fd: "liver_00-00-05.jpg")
+    _, tools = t.build_tool_server(_ctx(tmp_path, db_conn))
+    out = json.loads(_text(await _call(tools, "keep_frame", {
+        "candidate_path": "/x/c.jpg", "prefix": "liver",
+        "timestamp": "00:00:05", "video_id": "vidABC",
+    })))
+    assert out["embed_path"] == "Attachments/frames/vidABC/liver_00-00-05.jpg"
+
+
+@pytest.mark.asyncio
+async def test_select_keyframes_tool_returns_candidates_and_montage(tmp_path, db_conn, monkeypatch):
+    from study_notes.agent import tools as t
+
+    def fake_select(video_path, start, end, budget, out_dir):
+        return {
+            "candidates": [
+                {"path": out_dir / "cand_001.jpg", "timestamp": "00:00:01", "index": 0},
+                {"path": out_dir / "cand_002.jpg", "timestamp": "00:00:02", "index": 1},
+            ],
+            "montage_path": out_dir / "montage.jpg",
+        }
+
+    monkeypatch.setattr(t.fr, "select_keyframes", fake_select)
+    _, tools = t.build_tool_server(_ctx(tmp_path, db_conn))
+    video_path = tmp_path / "video.mp4"
+    out = json.loads(_text(await _call(tools, "select_keyframes", {
+        "video_path": str(video_path), "start": "00:00:00", "end": "00:00:10", "budget": 5,
+    })))
+    assert out["candidates"] == [
+        {"candidate_path": str(tmp_path / "cands_000000_000010" / "cand_001.jpg"),
+         "timestamp": "00:00:01", "index": 0},
+        {"candidate_path": str(tmp_path / "cands_000000_000010" / "cand_002.jpg"),
+         "timestamp": "00:00:02", "index": 1},
+    ]
+    assert out["montage_path"] == str(tmp_path / "cands_000000_000010" / "montage.jpg")
