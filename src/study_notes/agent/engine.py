@@ -40,6 +40,15 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
     options = build_options(ctx)
     final = ""
     error: ResultMessage | None = None
+    # Consume the FULL stream — do not break on the first ResultMessage. A `result`
+    # frame ends one TURN, not the run: when the orchestrator dispatches subagents
+    # they run as in-flight tasks and the SDK keeps the stream open, waking the
+    # orchestrator for follow-up turns until a final `result` arrives with no tasks
+    # in flight (see claude_agent_sdk _internal/query.py, #1088). Breaking on the
+    # first result returns a half-finished plan ("I'll wait for the subagents…") and,
+    # because background tasks are still live, triggers
+    # "aclose(): asynchronous generator is already running". Iterating to natural
+    # closure both lets the run complete and avoids the aclose error.
     async for message in query(prompt=input_prompt, options=options):
         if isinstance(message, AssistantMessage):
             for block in message.content:
@@ -49,6 +58,8 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
             if message.is_error:
                 error = message
             else:
+                # A successful turn supersedes an earlier turn's error.
+                error = None
                 # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
                 # `str | None` (not a dict); guard for a dict defensively too.
                 r = message.result
@@ -56,9 +67,6 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
                     final = r.get("result", final) or final
                 elif isinstance(r, str) and r:
                     final = r
-            # ResultMessage is terminal — stop iterating so the async generator
-            # closes cleanly (raising mid-iteration triggers an aclose error).
-            break
     if error is not None:
         raise EngineError(
             f"agent run failed (subtype={error.subtype}): {error.result!r}")
