@@ -14,9 +14,13 @@ You are given one topic's source material (and maybe a neighbor note to match in
 ## Rules
 - Lead with the point. Active voice. Concrete specifics over abstractions. Keep it tight.
 - If a neighbor note is provided, match its structure and depth for consistency.
-- Output a complete Obsidian markdown note with YAML frontmatter (title, category, tags,
-  source, source_type, source_date, captured_at). Do not invent facts beyond the source and the
+- Start the note with a `# ` H1 title, then the body. The YAML frontmatter is assembled for you
+  (OKF-aligned: `type`, `resource`, `timestamp`, `category`, `source_type`) — you may optionally
+  lead with a small frontmatter block carrying just `description:` (one line) and `tags: [..]` and
+  they will be kept; anything else there is ignored. Do not invent facts beyond the source and the
   enrichment you are given.
+- Put external, enrichment-derived sources under a final `## Citations` section, each a bullet with
+  its URL (the OKF citations convention). Leave in-source facts un-cited.
 - Follow the anti-slop guide.
 
 ## Visuals (when given a `video_path` + window + frame budget)

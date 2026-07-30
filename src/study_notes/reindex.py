@@ -60,8 +60,10 @@ def reindex(config: Config, index: VaultIndex) -> int:
         rel = str(md_path.relative_to(config.vault_path))
         index.upsert_category(category)
         prov = Provenance(
-            origin=fm.get("source", ""), input_type=fm.get("source_type", ""),
-            captured_at=_date(fm.get("captured_at")) or date.today(),
+            # OKF-aligned field names, with fallback to the pre-OKF names.
+            origin=fm.get("resource") or fm.get("source", ""),
+            input_type=fm.get("source_type", ""),
+            captured_at=_date(fm.get("timestamp") or fm.get("captured_at")) or date.today(),
             source_date=_date(fm.get("source_date")),
         )
         index.upsert_note(Note(path=rel, title=fm.get("title", md_path.stem),

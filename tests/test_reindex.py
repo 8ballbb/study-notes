@@ -36,6 +36,39 @@ def test_parse_frontmatter_reads_keys():
     assert fm["source"] == "https://youtu.be/abc"
 
 
+OKF_NOTE = """---
+type: study-note
+title: Paxos
+description: A consensus protocol
+resource: https://youtu.be/xyz
+tags: [consensus]
+category: Distributed Systems
+source_type: youtube
+source_date: 2025-01-01
+timestamp: 2026-07-30
+---
+
+# Paxos
+
+Paxos reaches agreement among unreliable nodes.
+"""
+
+
+def test_reindex_reads_okf_field_names(db_conn, tmp_path):
+    # Notes written with OKF field names (resource/timestamp/type) must reindex
+    # cleanly, not just the pre-OKF source/captured_at names.
+    from study_notes.reindex import reindex
+    cat = tmp_path / "Notes" / "Distributed Systems"
+    cat.mkdir(parents=True)
+    (cat / "Paxos.md").write_text(OKF_NOTE)
+    index = VaultIndex(db_conn, FakeEmbedder())
+    count = reindex(_cfg(tmp_path), index)
+    assert count == 1
+    hits = index.find_related("agreement among unreliable nodes",
+                              category="Distributed Systems", k=5)
+    assert any("Paxos" in p for p, _ in hits)
+
+
 def test_reindex_upserts_notes_and_skips_moc(db_conn, tmp_path):
     from study_notes.reindex import reindex
     cat = tmp_path / "Notes" / "Distributed Systems"

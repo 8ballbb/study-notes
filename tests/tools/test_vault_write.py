@@ -89,3 +89,41 @@ def test_write_merge_upserts_into_index(tmp_path, db_conn):
     w.write_merge(path, _topic(), on=date(2026, 7, 27))
     hits = w.index.find_related("leaders per term", category="Distributed Systems", k=5)
     assert any("Raft" in p for p, _ in hits)
+
+
+def _prov():
+    return Provenance(origin="https://youtube.com/watch?v=abc", input_type="youtube",
+                      captured_at=date(2026, 7, 26), source_date=date(2025, 11, 14))
+
+
+def test_write_markdown_adds_okf_frontmatter_when_model_omits_it(tmp_path, db_conn):
+    # The model routinely returns a bare body with no frontmatter — the note must
+    # still come out OKF-conformant with metadata filled from provenance.
+    w = _writer(tmp_path, db_conn)
+    body = "# Raft Consensus\n\nRaft elects one leader per term to keep a replicated log."
+    path = w.write_markdown("Raft Consensus", "Distributed Systems", body, _prov())
+    text = (tmp_path / path).read_text()
+    assert text.startswith("---\n")
+    assert "type: study-note" in text                         # OKF required field
+    assert "resource: https://youtube.com/watch?v=abc" in text  # OKF resource URI
+    assert "timestamp: 2026-07-26" in text                    # OKF timestamp
+    assert "source_type: youtube" in text
+    assert "description: Raft elects one leader per term" in text  # derived from body
+    assert "# Raft Consensus" in text                         # body preserved
+    assert text.count("type: study-note") == 1  # exactly one canonical block
+    assert text.count("---") == 2                # opened + closed once
+
+
+def test_write_markdown_harvests_and_normalizes_model_frontmatter(tmp_path, db_conn):
+    # If the model DID include its own frontmatter, harvest tags/description from it
+    # and emit exactly one canonical OKF block (no duplicate/stale fields).
+    w = _writer(tmp_path, db_conn)
+    md = ('---\ndescription: How layers connect\ntags: [neural-nets, sigmoid]\n'
+          'source: junk\n---\n\n# One Layer\n\nWeighted sums feed the next layer.')
+    path = w.write_markdown("One Layer", "Machine Learning", md, _prov())
+    text = (tmp_path / path).read_text()
+    assert "tags: [neural-nets, sigmoid]" in text
+    assert "description: How layers connect" in text
+    assert "resource: https://youtube.com/watch?v=abc" in text
+    assert "source: junk" not in text          # stale model field dropped
+    assert text.count("---") == 2              # one frontmatter block, opened+closed

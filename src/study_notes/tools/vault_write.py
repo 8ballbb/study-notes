@@ -5,8 +5,60 @@ from pathlib import Path
 
 from study_notes.config import Config
 from study_notes.models import Note, Topic
-from study_notes.renderer import render_note, render_update_section
+from study_notes.renderer import _yaml_scalar, render_note, render_update_section
 from study_notes.vault_index import VaultIndex
+
+
+def _split_frontmatter(md: str) -> tuple[dict, str]:
+    """Split a leading YAML frontmatter block off `md`. Returns (fields, body).
+    If there is no frontmatter, returns ({}, md). Tolerant, line-based parse."""
+    lines = md.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return {}, md
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            fm: dict = {}
+            for line in lines[1:i]:
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    fm[k.strip()] = v.strip()
+            return fm, "\n".join(lines[i + 1:]).lstrip("\n")
+    return {}, md
+
+
+def _parse_tags(raw: str | None) -> list[str]:
+    raw = (raw or "").strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        raw = raw[1:-1]
+    return [t.strip().strip("'\"") for t in raw.split(",") if t.strip()]
+
+
+def _derive_description(body: str) -> str:
+    """First real sentence of the body — used when the model gave no description."""
+    for line in body.splitlines():
+        s = line.strip()
+        if s and s[0] not in "#!|>-*`":
+            return s.split(". ")[0].rstrip(".")[:200]
+    return ""
+
+
+def okf_note_frontmatter(title: str, category: str, provenance,
+                         description: str, tags: list[str]) -> str:
+    """Canonical OKF-aligned frontmatter for a study note. `type` is the only field
+    OKF requires; `resource`/`tags`/`description`/`title` are its recommended fields;
+    `category`/`source_type`/`source_date` are project-specific provenance we keep."""
+    p = provenance
+    rows = ["---", "type: study-note", f"title: {_yaml_scalar(title)}"]
+    if description:
+        rows.append(f"description: {_yaml_scalar(description)}")
+    rows.append(f"resource: {p.origin}" if p.origin else "resource:")
+    rows.append(f"tags: [{', '.join(tags)}]")
+    rows.append(f"category: {_yaml_scalar(category)}")
+    rows.append(f"source_type: {p.input_type}")
+    rows.append(f"source_date: {p.source_date.isoformat()}" if p.source_date else "source_date:")
+    rows.append(f"timestamp: {p.captured_at.isoformat()}")
+    rows.append("---")
+    return "\n".join(rows)
 
 
 class VaultWriteConflict(Exception):
@@ -105,11 +157,21 @@ class VaultWriter:
         abs_path = self._abs_within_vault(path)
         if abs_path.exists():
             raise VaultWriteConflict(path)
-        _atomic_write(abs_path, markdown)
+        # The model's markdown may or may not carry its own frontmatter, and when it
+        # does it's inconsistent. Strip any leading block, harvest tags/description
+        # from it if present, and prepend a canonical OKF-aligned block built from the
+        # provenance we already hold — so every note is OKF-conformant and never ends
+        # up with no metadata (the model routinely omits frontmatter entirely).
+        model_fm, body = _split_frontmatter(markdown)
+        description = model_fm.get("description") or _derive_description(body)
+        tags = _parse_tags(model_fm.get("tags"))
+        fm = okf_note_frontmatter(title, category, provenance, description, tags)
+        final = f"{fm}\n\n{body}\n" if body else f"{fm}\n"
+        _atomic_write(abs_path, final)
         self._add_moc_link(category, abs_path.stem)
         self.index.upsert_note(Note(path=path, title=title, category=category,
-                                    content=markdown, provenance=provenance))
-        if abs_path.read_text() != markdown:
+                                    content=final, provenance=provenance))
+        if abs_path.read_text() != final:
             raise VaultWriteError(f"read-back verification failed for {path}")
         return path
 
