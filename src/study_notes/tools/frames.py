@@ -3,6 +3,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from study_notes.tools import frame_select
+
 FFMPEG_IMAGE = "jrottenberg/ffmpeg:6.1-alpine"
 
 
@@ -73,7 +75,7 @@ def _ts_secs(hhmmss: str) -> int:
 
 
 def select_keyframes(video_path: Path, start: str, end: str, budget: int,
-                     out_dir: Path) -> list[dict]:
+                     out_dir: Path) -> dict:
     """Phase 1: visually-distinct candidate frames (mpdecimate), window-scoped, budget-capped."""
     out_dir.mkdir(parents=True, exist_ok=True)
     if out_dir.parent.resolve() != video_path.parent.resolve():
@@ -96,10 +98,12 @@ def select_keyframes(video_path: Path, start: str, end: str, budget: int,
     frames = sorted(out_dir.glob("cand_*.jpg"))
     cands = [{"path": p, "timestamp": _fmt_ts(start_s + (times[i] if i < len(times) else 0.0))}
              for i, p in enumerate(frames)]
-    if budget > 0 and len(cands) > budget:  # uniform subsample down to budget
-        step = len(cands) / budget
-        cands = [cands[int(i * step)] for i in range(budget)]
-    return cands
+    refined = frame_select.refine_candidates(cands, budget)
+    for i, c in enumerate(refined):
+        c["index"] = i
+    montage_path = out_dir / "montage.jpg"
+    frame_select.build_montage(refined, montage_path)
+    return {"candidates": refined, "montage_path": montage_path}
 
 
 def keep_frame(candidate_path: Path, prefix: str, timestamp: str, frames_dir: Path) -> str:

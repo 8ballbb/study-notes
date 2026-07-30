@@ -29,10 +29,19 @@ def work_dir():
 @pytest.fixture
 def scenes_video(work_dir):
     from study_notes.tools.frames import _docker_ffmpeg
+    # Static (non-time-varying) geq luma patterns rather than flat colors: refine_candidates
+    # scores sharpness (variance-of-Laplacian) and dHash on grayscale luma, both of which are
+    # exactly zero for a solid-color frame, so flat scenes would all look like identical blurry
+    # duplicates to the real algorithm. These per-scene sinusoidal patterns give each held frame
+    # genuine texture (distinct hash, sharpness above the blur floor) while staying constant
+    # within a scene so mpdecimate still collapses each scene down to one held frame.
+    lum1 = "128+127*sin(X/2)*sin(Y/2)"
+    lum2 = "128+127*sin(X/2+3)*cos(Y/1.5)"
+    lum3 = "128+127*cos(X/1.3)*sin(Y/2.2+1)"
     _docker_ffmpeg(work_dir, [
-        "-f", "lavfi", "-i", "color=c=red:s=320x240:d=2,format=yuv420p",
-        "-f", "lavfi", "-i", "color=c=green:s=320x240:d=2,format=yuv420p",
-        "-f", "lavfi", "-i", "color=c=blue:s=320x240:d=2,format=yuv420p",
+        "-f", "lavfi", "-i", f"nullsrc=size=320x240:d=2,format=yuv420p,geq=lum='{lum1}':cb=128:cr=128",
+        "-f", "lavfi", "-i", f"nullsrc=size=320x240:d=2,format=yuv420p,geq=lum='{lum2}':cb=128:cr=128",
+        "-f", "lavfi", "-i", f"nullsrc=size=320x240:d=2,format=yuv420p,geq=lum='{lum3}':cb=128:cr=128",
         "-filter_complex", "[0][1][2]concat=n=3:v=1", "/work/scenes.mp4", "-y",
     ])
     return work_dir / "scenes.mp4"
@@ -42,28 +51,37 @@ def scenes_video(work_dir):
 @needs_docker
 def test_select_keyframes_dedups_distinct_scenes(scenes_video, work_dir):
     out = work_dir / "cands"; out.mkdir()
-    cands = select_keyframes(scenes_video, "00:00:00", "00:00:06", budget=10, out_dir=out)
+    res = select_keyframes(scenes_video, "00:00:00", "00:00:06", budget=10, out_dir=out)
+    cands = res["candidates"]
     assert 2 <= len(cands) <= 4          # ~3 distinct held scenes (deduped)
     assert all(c["path"].exists() for c in cands)
     assert all(c["timestamp"].count(":") == 2 for c in cands)
+    assert res["montage_path"].exists()
+    assert all("index" in c for c in cands)
 
 
 @pytest.mark.docker
 @needs_docker
 def test_select_keyframes_respects_budget(scenes_video, work_dir):
     out = work_dir / "c2"; out.mkdir()
-    cands = select_keyframes(scenes_video, "00:00:00", "00:00:06", budget=2, out_dir=out)
+    res = select_keyframes(scenes_video, "00:00:00", "00:00:06", budget=2, out_dir=out)
+    cands = res["candidates"]
     assert len(cands) <= 2
+    assert res["montage_path"].exists()
+    assert all("index" in c for c in cands)
 
 
 @pytest.mark.docker
 @needs_docker
 def test_select_keyframes_timestamps_are_absolute(scenes_video, work_dir):
     out = work_dir / "cands_abs"; out.mkdir()
-    cands = select_keyframes(scenes_video, "00:00:02", "00:00:06", budget=10, out_dir=out)
+    res = select_keyframes(scenes_video, "00:00:02", "00:00:06", budget=10, out_dir=out)
+    cands = res["candidates"]
     assert cands
     # window starts at 2s, so every reported timestamp must be >= 00:00:02
     assert all(c["timestamp"] >= "00:00:02" for c in cands)
+    assert res["montage_path"].exists()
+    assert all("index" in c for c in cands)
 
 
 def test_select_keyframes_rejects_out_dir_outside_video_dir(tmp_path):
