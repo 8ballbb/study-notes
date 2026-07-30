@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 from claude_agent_sdk import (
@@ -12,8 +13,21 @@ from study_notes.agent.agents import build_agents
 from study_notes.agent.context import EngineContext
 from study_notes.agent.tools import build_tool_server
 
+
 class EngineError(Exception):
     """The agent run ended in an error result."""
+
+
+def _frame_work_dir(ctx: EngineContext) -> Path:
+    """The scratch dir prepare_video/select_keyframes write into (videos + candidate
+    frames). Kept frames are copied out to the frames dir, so this is pure scratch."""
+    return (ctx.config.vault_path / ctx.config.attachments_dir
+            / ctx.config.frames_subdir / "_work")
+
+
+def clean_frame_work(ctx: EngineContext) -> None:
+    """Remove the frame scratch dir. Idempotent; never raises."""
+    shutil.rmtree(_frame_work_dir(ctx), ignore_errors=True)
 
 
 _SN = "mcp__study-notes__"
@@ -56,24 +70,30 @@ async def run_ingest(ctx: EngineContext, input_prompt: str) -> str:
     # because background tasks are still live, triggers
     # "aclose(): asynchronous generator is already running". Iterating to natural
     # closure both lets the run complete and avoids the aclose error.
-    async for message in query(prompt=input_prompt, options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    final = block.text
-        elif isinstance(message, ResultMessage):
-            if message.is_error:
-                error = message
-            else:
-                # A successful turn supersedes an earlier turn's error.
-                error = None
-                # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
-                # `str | None` (not a dict); guard for a dict defensively too.
-                r = message.result
-                if isinstance(r, dict):
-                    final = r.get("result", final) or final
-                elif isinstance(r, str) and r:
-                    final = r
+    try:
+        async for message in query(prompt=input_prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        final = block.text
+            elif isinstance(message, ResultMessage):
+                if message.is_error:
+                    error = message
+                else:
+                    # A successful turn supersedes an earlier turn's error.
+                    error = None
+                    # In claude-agent-sdk 0.2.128, `ResultMessage.result` is typed
+                    # `str | None` (not a dict); guard for a dict defensively too.
+                    r = message.result
+                    if isinstance(r, dict):
+                        final = r.get("result", final) or final
+                    elif isinstance(r, str) and r:
+                        final = r
+    finally:
+        # _work holds only scratch (the download + unchosen candidate frames);
+        # kept frames were already copied into the frames dir. Clear it so it does
+        # not grow across ingests.
+        clean_frame_work(ctx)
     if error is not None:
         raise EngineError(
             f"agent run failed (subtype={error.subtype}): {error.result!r}")

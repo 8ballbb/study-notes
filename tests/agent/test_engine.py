@@ -73,3 +73,46 @@ async def test_run_ingest_returns_text_on_success(tmp_path, db_conn, monkeypatch
     monkeypatch.setattr(engine, "query", fake_query)
     out = await run_ingest(_ctx(tmp_path, db_conn), "go")
     assert out == "the plan"
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_consumes_full_stream_not_first_result(tmp_path, db_conn, monkeypatch):
+    # A `result` frame ends one TURN, not the run. run_ingest must NOT stop at the
+    # first result (the orchestrator's "waiting on subagents" turn-end) — it must
+    # keep consuming and return the FINAL result.
+    from claude_agent_sdk import ResultMessage
+
+    from study_notes.agent import engine
+    from study_notes.agent.engine import run_ingest
+
+    def _res(text):
+        return ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1,
+                             is_error=False, num_turns=1, session_id="s", result=text)
+
+    async def fake_query(*, prompt, options):
+        yield _res("waiting on subagents")   # first turn-end
+        yield _res("final integrated plan")  # run truly done
+
+    monkeypatch.setattr(engine, "query", fake_query)
+    out = await run_ingest(_ctx(tmp_path, db_conn), "go")
+    assert out == "final integrated plan"
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_clears_frame_work_scratch(tmp_path, db_conn, monkeypatch):
+    from claude_agent_sdk import ResultMessage
+
+    from study_notes.agent import engine
+    from study_notes.agent.engine import run_ingest
+
+    async def fake_query(*, prompt, options):
+        yield ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1,
+                            is_error=False, num_turns=1, session_id="s", result="done")
+
+    monkeypatch.setattr(engine, "query", fake_query)
+    ctx = _ctx(tmp_path, db_conn)
+    work = tmp_path / "Attachments" / "frames" / "_work"
+    (work / "cands_x").mkdir(parents=True)
+    (work / "video.mp4").write_text("scratch")
+    await run_ingest(ctx, "go")
+    assert not work.exists()
