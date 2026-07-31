@@ -45,23 +45,27 @@ A single agentic run, structured as an **orchestrator with workers**:
 flowchart TB
     CLI["study-notes add &lt;url&gt; / file"] --> DEDUP{"already ingested?"}
     DEDUP -->|yes| SKIP([skip])
-    DEDUP -->|no| FETCH["fetch transcript<br/>YouTube captions, else local Whisper"]
+    DEDUP -->|no| KIND{"source type"}
+    KIND -->|"YouTube URL"| YT["fetch_youtube_transcript<br/>captions, else local Whisper"]
+    KIND -->|"local file"| DOC["read the file directly<br/>Read: text / Markdown / PDF (pandoc for .docx)"]
 
-    FETCH --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
+    YT --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
+    DOC --> SPLIT
+
     SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
-    PLACE --> GATE{"visual enough<br/>for frames?"}
+    PLACE --> GATE{"video source,<br/>visual enough for frames?"}
 
     PREP["prepare_video once<br/>≤480p, shared by workers"]
     DISPATCH(["dispatch each topic, in parallel"])
     GATE -->|yes| PREP --> DISPATCH
-    GATE -->|no| DISPATCH
+    GATE -->|"no / not a video"| DISPATCH
 
     DISPATCH --> EXT
     DISPATCH --> ENR
 
     subgraph EXT["extractor subagent · sonnet"]
         direction TB
-        DRAFT["draft the note from the transcript<br/>Feynman-plain voice"]
+        DRAFT["draft the note from the source<br/>Feynman-plain voice"]
         DRAFT --> CUES["find the visual-cue moments in the text"]
         CUES --> SEL["select_keyframes<br/>ffmpeg mpdecimate → blur filter → dHash dedup + settled frame → montage"]
         SEL --> PICK["Read the montage, pick the best frame"]
