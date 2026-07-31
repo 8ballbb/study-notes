@@ -42,15 +42,44 @@ Everything lands as Markdown in your vault, indexed for semantic search.
 A single agentic run, structured as an **orchestrator with workers**:
 
 ```mermaid
-flowchart TD
-    CLI["study-notes add &lt;url&gt;"] --> DEDUP{"already ingested?"}
+flowchart TB
+    CLI["study-notes add &lt;url&gt; / file"] --> DEDUP{"already ingested?"}
     DEDUP -->|yes| SKIP([skip])
-    DEDUP -->|no| ORCH["opus orchestrator<br/>decompose · categorise · integrate · screen · write"]
-    ORCH -->|"each topic, in parallel"| EX["extractor<br/>note + targeted frames"]
-    ORCH -->|"each topic, in parallel"| EN["enricher<br/>cited web research"]
-    EX --> ORCH
-    EN --> ORCH
-    ORCH --> VAULT[("Obsidian vault<br/>Markdown notes + frames")]
+    DEDUP -->|no| FETCH["fetch transcript<br/>YouTube captions, else local Whisper"]
+
+    FETCH --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
+    SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
+    PLACE --> GATE{"visual enough<br/>for frames?"}
+
+    PREP["prepare_video once<br/>≤480p, shared by workers"]
+    DISPATCH(["dispatch each topic, in parallel"])
+    GATE -->|yes| PREP --> DISPATCH
+    GATE -->|no| DISPATCH
+
+    DISPATCH --> EXT
+    DISPATCH --> ENR
+
+    subgraph EXT["extractor subagent · sonnet"]
+        direction TB
+        DRAFT["draft the note from the transcript<br/>Feynman-plain voice"]
+        DRAFT --> CUES["find the visual-cue moments in the text"]
+        CUES --> SEL["select_keyframes<br/>ffmpeg mpdecimate → blur filter → dHash dedup + settled frame → montage"]
+        SEL --> PICK["Read the montage, pick the best frame"]
+        PICK --> KEEP["keep_frame → Attachments/frames/&lt;video_id&gt;/<br/>skips perceptual duplicates"]
+        KEEP --> SS1["check_slop (self-screen)"]
+    end
+
+    subgraph ENR["enricher subagent · sonnet"]
+        direction TB
+        WEB["WebSearch / WebFetch"] --> CITE["cited additions<br/>a source URL on every claim"]
+    end
+
+    EXT --> INT["orchestrator integrates<br/>note + citations → one note"]
+    ENR --> INT
+    INT --> SCREEN["check_slop on the final note"]
+    SCREEN --> WRITE["vault_write<br/>OKF frontmatter · non-destructive · atomic read-back · updates MOC + index"]
+    WRITE --> REC["record in the ingest log<br/>path recovered from notes.source"]
+    REC --> STORE[("Obsidian vault<br/>Notes/&lt;Category&gt;/*.md · Attachments/frames · Postgres/pgvector")]
 ```
 
 The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel — so a multi-topic source doesn't crawl through one giant sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
