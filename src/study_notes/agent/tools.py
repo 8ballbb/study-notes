@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import date
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from study_notes.agent.context import EngineContext
 from study_notes.models import Provenance
 from study_notes.slop_check import slop_check
 from study_notes.tools import frames as fr
-from study_notes.tools import search, youtube
+from study_notes.tools import search, webpage, youtube
 
 
 def _ok(payload) -> dict:
@@ -30,6 +31,16 @@ def build_tool_server(ctx: EngineContext):
         return _ok({"url": r.url, "video_id": r.video_id, "title": r.title,
                     "upload_date": r.upload_date,
                     "segments": [{"start": s.start, "text": s.text} for s in r.segments]})
+
+    async def fetch_webpage(args: dict) -> dict:
+        r = await webpage.fetch_webpage(
+            args["url"],
+            profile_dir=os.path.expanduser(ctx.config.browser["profile"]),
+            timeout_ms=int(ctx.config.browser.get("timeout_ms", 30000)),
+            headless=bool(ctx.config.browser.get("headless", True)),
+        )
+        return _ok({"url": r.url, "title": r.title, "text": r.text,
+                    "source_date": r.source_date})
 
     async def list_categories(args: dict) -> dict:
         return _ok(search.list_categories(ctx.index))
@@ -72,7 +83,8 @@ def build_tool_server(ctx: EngineContext):
                     for f in slop_check(args["text"])])
 
     fns = {
-        "fetch_youtube_transcript": fetch_youtube_transcript, "list_categories": list_categories,
+        "fetch_youtube_transcript": fetch_youtube_transcript, "fetch_webpage": fetch_webpage,
+        "list_categories": list_categories,
         "vault_search": vault_search, "prepare_video": prepare_video,
         "select_keyframes": select_keyframes, "keep_frame": keep_frame,
         "vault_write": vault_write, "check_slop": check_slop,
@@ -81,6 +93,8 @@ def build_tool_server(ctx: EngineContext):
     sdk_tools = [
         tool("fetch_youtube_transcript", "Fetch a YouTube transcript with timestamps.",
              {"url": str})(fetch_youtube_transcript),
+        tool("fetch_webpage", "Render a webpage (JS + logged-in) and return its readable text.",
+             {"url": str})(fetch_webpage),
         tool("list_categories", "List existing vault categories.", {})(list_categories),
         tool("vault_search", "Find related notes within a category.",
              {"query": str, "category": str})(vault_search),

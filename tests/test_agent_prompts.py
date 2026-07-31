@@ -51,6 +51,12 @@ def test_orchestrator_forwards_video_id_to_extractor():
     assert "video_id" in t
 
 
+def test_orchestrator_prompt_covers_webpage():
+    # Non-YouTube http/https sources must be routed to fetch_webpage.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "fetch_webpage" in t
+
+
 def test_enrichment_guide_requires_sources():
     t = Path("prompts/enrichment.md").read_text().lower()
     assert "websearch" in t or "web search" in t

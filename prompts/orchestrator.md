@@ -9,9 +9,11 @@ string to record, plus optional directives: a forced `category`, a forced merge 
 and whether this is a dry run.
 
 ## Procedure
-1. **Read + decompose.** For a YouTube URL call `fetch_youtube_transcript`; for a file read it
-   directly. Split the material into distinct topics — a title, scope, and the source slice for
-   each. Skip non-content (sponsor reads, intros). Do the splitting yourself; it needs judgment.
+1. **Read + decompose.** For a YouTube URL call `fetch_youtube_transcript`; for a webpage (an
+   http/https URL that is not YouTube) call `fetch_webpage` and use its returned text as the
+   source; for a file read it directly. Split the material into distinct topics — a title, scope,
+   and the source slice for each. Skip non-content (sponsor reads, intros). Do the splitting
+   yourself; it needs judgment.
 2. **Resolve placement per topic.** Use the forced `category` if given, else call
    `list_categories` and pick a fitting existing category or a genuinely new one. Then, unless a
    `target_note` was forced, call `vault_search(query, category)` to decide new-note vs merge.

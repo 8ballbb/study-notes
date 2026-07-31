@@ -13,11 +13,12 @@ from study_notes.vault_index import VaultIndex
 pytestmark = pytest.mark.integration
 
 
-def _ctx(tmp_path, db_conn):
+def _ctx(tmp_path, db_conn, browser=None):
     cfg = Config(vault_path=tmp_path, notes_root="Notes",
                  attachments_dir="Attachments", frames_subdir="frames",
                  database_url="unused", embedding_model="fake",
-                 models={}, prompts={}, dry_run=False)
+                 models={}, prompts={}, dry_run=False,
+                 browser=browser or {"profile": "~/.study-notes/browser-profile"})
     index = VaultIndex(db_conn, FakeEmbedder())
     return EngineContext(config=cfg, index=index, writer=VaultWriter(cfg, index))
 
@@ -123,3 +124,20 @@ async def test_select_keyframes_tool_returns_candidates_and_montage(tmp_path, db
          "timestamp": "00:00:02", "index": 1},
     ]
     assert out["montage_path"] == str(tmp_path / "cands_000000_000010" / "montage.jpg")
+
+
+@pytest.mark.asyncio
+async def test_fetch_webpage_tool_returns_ok_shape(tmp_path, db_conn, monkeypatch):
+    # No real browser: monkeypatch webpage.fetch_webpage with an async fake.
+    from study_notes.agent import tools as t
+    from study_notes.tools.webpage import WebpageResult
+
+    async def fake_fetch_webpage(url, *, profile_dir, timeout_ms, headless=True):
+        return WebpageResult(url=url, title="Example Title", text="Example body text.",
+                             source_date="2025-01-02")
+
+    monkeypatch.setattr(t.webpage, "fetch_webpage", fake_fetch_webpage)
+    _, tools = t.build_tool_server(_ctx(tmp_path, db_conn))
+    out = json.loads(_text(await _call(tools, "fetch_webpage", {"url": "https://example.com/a"})))
+    assert out == {"url": "https://example.com/a", "title": "Example Title",
+                    "text": "Example body text.", "source_date": "2025-01-02"}

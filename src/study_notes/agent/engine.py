@@ -32,7 +32,7 @@ def clean_frame_work(ctx: EngineContext) -> None:
 
 _SN = "mcp__study-notes__"
 _TOOLS = [f"{_SN}{n}" for n in (
-    "fetch_youtube_transcript", "list_categories", "vault_search",
+    "fetch_youtube_transcript", "fetch_webpage", "list_categories", "vault_search",
     "prepare_video", "select_keyframes", "keep_frame", "vault_write", "check_slop",
 )]
 
