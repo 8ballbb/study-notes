@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -23,6 +24,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     a.add_argument("--force", action="store_true")
 
     sub.add_parser("reindex", help="rebuild the index from the vault")
+
+    login_p = sub.add_parser("login", help="log into a site for later paywalled fetches")
+    login_p.add_argument("url", nargs="?")
     return p.parse_args(argv)
 
 
@@ -43,6 +47,14 @@ def main(argv: list[str] | None = None) -> int:
         from study_notes.reindex import reindex
         n = reindex(config, _make_index(config))
         print(f"reindexed {n} note(s)")
+        return 0
+
+    if ns.command == "login":
+        from study_notes.tools.webpage import browser_login
+
+        profile_dir = os.path.expanduser(config.browser["profile"])
+        browser_login(profile_dir, ns.url)
+        print("Session saved.")
         return 0
 
     from study_notes.ingest import IngestLog

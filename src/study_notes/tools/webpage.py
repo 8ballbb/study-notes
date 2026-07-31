@@ -66,6 +66,37 @@ def extract_readable(html: str, url: str) -> WebpageResult:
     return WebpageResult(url=url, title=title or "", text=body, source_date=source_date)
 
 
+def browser_login(profile_dir: str, url: str | None = None) -> None:
+    """Open a headed, persistent Chromium profile so the user can log in by hand.
+
+    Cookies/session state are written to `profile_dir` on close, so a later
+    `fetch_webpage` call against the same profile reuses the session.
+    """
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+
+    expanded_profile_dir = os.path.expanduser(profile_dir)
+
+    try:
+        with sync_playwright() as p:
+            context = p.chromium.launch_persistent_context(
+                expanded_profile_dir, headless=False
+            )
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                if url:
+                    page.goto(url)
+                print(
+                    "A browser window opened. Log in to the site, then press "
+                    "Enter here to save the session…"
+                )
+                input()
+            finally:
+                context.close()
+    except PlaywrightError as exc:
+        raise WebpageFetchError(f"login failed: {exc}") from exc
+
+
 async def fetch_webpage(
     url: str, *, profile_dir: str, timeout_ms: int, headless: bool = True
 ) -> WebpageResult:

@@ -13,3 +13,15 @@ def test_parse_add_with_flags():
 def test_parse_reindex():
     ns = parse_args(["reindex"])
     assert ns.command == "reindex"
+
+
+def test_parse_login_with_url():
+    ns = parse_args(["login", "https://x.com"])
+    assert ns.command == "login"
+    assert ns.url == "https://x.com"
+
+
+def test_parse_login_without_url():
+    ns = parse_args(["login"])
+    assert ns.command == "login"
+    assert ns.url is None
