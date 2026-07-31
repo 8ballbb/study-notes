@@ -22,11 +22,18 @@ def extract_readable(html: str, url: str) -> WebpageResult:
     """
     import trafilatura
 
+    # Gate on the actual article content length, not the with_metadata=True
+    # markdown, which prepends a YAML frontmatter block (title/description/date)
+    # that can inflate a thin, paywalled body past the threshold.
+    content = trafilatura.extract(html, output_format="txt", favor_recall=True)
+    if not content or len(content) < _MIN_BODY_CHARS:
+        raise ThinContentError(f"{url}: thin content")
+
     body = trafilatura.extract(
         html, output_format="markdown", with_metadata=True, favor_recall=True
     )
-    if not body or len(body) < _MIN_BODY_CHARS:
-        raise ThinContentError(url)
+    if not body:
+        raise ThinContentError(f"{url}: thin content")
 
     metadata = trafilatura.extract_metadata(html)
     title = metadata.title if metadata is not None else None

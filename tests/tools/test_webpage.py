@@ -36,3 +36,30 @@ def test_extract_readable_raises_on_thin_content():
     html = "<html><body><p>Too short.</p></body></html>"
     with pytest.raises(ThinContentError):
         extract_readable(html, "https://example.com/empty")
+
+
+def test_extract_readable_raises_on_paywalled_page_with_rich_metadata():
+    # Realistic paywall: a normal <title> + meta description (so the
+    # with_metadata=True markdown frontmatter is populated), but the visible
+    # body is just a one-sentence teaser. The frontmatter alone must not be
+    # able to push the extracted content past the thin-content threshold.
+    html = """
+    <html>
+    <head>
+      <title>Why Sourdough Starters Fail in Winter</title>
+      <meta name="description" content="A deep dive into cold-weather
+      fermentation problems for home bakers, from a professional bread baker
+      with two decades of experience running a commercial bakery.">
+    </head>
+    <body>
+      <main>
+        <article>
+          <h1>Why Sourdough Starters Fail in Winter</h1>
+          <p>Subscribe to read more.</p>
+        </article>
+      </main>
+    </body>
+    </html>
+    """
+    with pytest.raises(ThinContentError):
+        extract_readable(html, "https://example.com/paywalled")
