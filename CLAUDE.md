@@ -1,14 +1,23 @@
 # CLAUDE.md — working notes for this repo
 
-`study-notes`: a personal, local-first CLI that turns YouTube videos / documents into concise,
-enriched Markdown study notes in an Obsidian vault. Built on the Claude Agent SDK as an
-opus **orchestrator** + cheap parallel **extractor/enricher** subagents, with in-process tools.
+`study-notes`: a personal, local-first CLI that turns YouTube videos, webpages, and local
+documents into concise, enriched Markdown study notes in an Obsidian vault. Built on the Claude
+Agent SDK as an opus **orchestrator** + cheap parallel **extractor/enricher** subagents, with
+in-process tools.
+
+Three input types: **YouTube URL** (yt-dlp captions + local Whisper fallback), **webpage URL**
+(Playwright renders the page — headless, using a dedicated login profile at `[browser].profile`
+so paywalled/JS-heavy sites work after a one-time `study-notes login <url>` — then `trafilatura`
+extracts the article text), and **local file** (read directly: text/Markdown/PDF, pandoc for
+`.docx`).
 
 ## Commands
 
 ```bash
 uv pip install -e ".[dev]"                               # install
+uv run playwright install chromium                       # for webpage ingestion
 uv run study-notes add <url|file> [--category C] [--note N] [--dry-run] [--force]
+uv run study-notes login <url>                            # one-time login for a paywalled site (opens a real browser)
 uv run study-notes reindex                               # rebuild search index + category MOCs from disk
 
 uv run pytest -m "not slow and not docker and not e2e"   # fast, TOKEN-FREE suite (~3.5s) — use this
@@ -41,10 +50,11 @@ It is bundled in the suite unless you exclude it — always add `and not e2e` fo
 - `src/study_notes/cli.py` — CLI entry; dedup gate → `run_ingest`.
 - `src/study_notes/agent/` — the engine: `engine.py` (`run_ingest`, `build_options`), `agents.py`
   (extractor/enricher `AgentDefinition`s), `tools.py` (in-process MCP `@tool` wrappers), `context.py`.
-- `src/study_notes/tools/` — `youtube.py` (yt-dlp captions + whisper fallback), `frames.py`
-  (Docker ffmpeg download + `select_keyframes`/`keep_frame`), `frame_select.py` (numpy/Pillow blur
-  filter + dHash dedup + montage), `vault_write.py` (non-destructive writer + OKF frontmatter),
-  `search.py`, `_ytdlp.py`.
+- `src/study_notes/tools/` — `youtube.py` (yt-dlp captions + whisper fallback), `webpage.py`
+  (Playwright render with a dedicated login profile + `browser_login` → `trafilatura` extraction),
+  `frames.py` (Docker ffmpeg download + `select_keyframes`/`keep_frame`), `frame_select.py`
+  (numpy/Pillow blur filter + dHash dedup + montage), `vault_write.py` (non-destructive writer +
+  OKF frontmatter), `search.py`, `_ytdlp.py`.
 - `src/study_notes/` — `config.py`, `models.py`, `renderer.py`, `reindex.py`, `slop_check.py`,
   `vault_index.py` (BGE-M3 + pgvector hybrid retrieval), `ingest.py` (dedup log).
 - `prompts/` — `orchestrator.md`, `note-writing.md` (structure **and** the Feynman-plain voice),
@@ -89,8 +99,8 @@ specs + plans), `scripts/doctor.sh`, and git history are what port. On a fresh c
    `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design rationale.
 2. **Run `./scripts/doctor.sh`** — a read-only check of every prerequisite and service (Homebrew,
    uv, Colima, the Docker daemon, the `study_notes_db` Postgres container, the ffmpeg image, the
-   Python deps, and `config.toml`'s `vault_path`). It prints the exact fix for each gap and changes
-   nothing.
+   Python deps including Playwright/trafilatura, the optional Chromium browser install, and
+   `config.toml`'s `vault_path`). It prints the exact fix for each gap and changes nothing.
 3. **For each `[MISS]` item: tell the user what's missing and the suggested fix, and ASK PERMISSION
    before installing or starting anything** (per Working preferences — never install/start infra
    unprompted). Run only the approved fixes, then re-run the doctor until everything is `[ok]`.

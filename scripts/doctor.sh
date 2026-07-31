@@ -45,6 +45,12 @@ echo "Python app"
 req "venv + dependencies (import study_notes)" "uv run python -c 'import study_notes'" "uv venv && uv pip install -e '.[dev]'"
 
 echo
+echo "Webpage ingestion"
+req "Playwright package"     "uv run python -c 'import playwright'"     "uv pip install -e '.[dev]' (or uv sync --extra dev)"
+req "trafilatura package"    "uv run python -c 'import trafilatura'"    "uv pip install -e ."
+opt "Playwright Chromium (for webpage ingestion)" "test -d \"$HOME/Library/Caches/ms-playwright\"" "uv run playwright install chromium"
+
+echo
 echo "Config"
 if [ -f config.toml ]; then
   printf '  [ok]   config.toml present\n'; pass=$((pass + 1))
@@ -68,6 +74,7 @@ opt "Claude Code CLI"         "command -v claude"  "install Claude Code — http
 echo
 if [ "$fail" -eq 0 ]; then
   echo "All required checks passed (${pass} ok). Try:  uv run study-notes add <youtube-url>"
+  echo "Paywalled webpages need a one-time login first:  uv run study-notes login <url>"
   exit 0
 else
   echo "${fail} required item(s) missing (${pass} ok). Fix the [MISS] items above."

@@ -2,7 +2,7 @@
 
 # 📚 Study Notes
 
-**Turn educational YouTube videos & documents into concise, enriched study notes in your own [Obsidian](https://obsidian.md) vault.**
+**Turn educational YouTube videos, webpages & documents into concise, enriched study notes in your own [Obsidian](https://obsidian.md) vault.**
 
 Local-first · agentic · plain Markdown you own — not rows in someone else's SaaS.<br>
 Give it a link, and a few minutes later you have study-ready notes that are often *better than the source*.
@@ -27,7 +27,7 @@ uv run study-notes add https://www.youtube.com/watch?v=<id>
 
 Point it at a source and it will:
 
-- **Fetch the transcript** (YouTube captions, with a local **Whisper** fallback for caption-less videos) or read the document directly.
+- **Fetch the source** — YouTube captions (with a local **Whisper** fallback for caption-less videos), a webpage (rendered with **Playwright**, including JS-heavy and paywalled pages behind a one-time login, then extracted with **trafilatura**), or a local document read directly.
 - **Split it into distinct topics** — one long video can become several focused notes.
 - **Write each note in whatever structure fits the content** — an explanation, a comparison table, a step-by-step, a worked example, a decision guide — composed as the material warrants, not forced into flashcards, in a plain, teaching **Feynman-plain voice** (with an anti-slop checker that flags AI-filler phrasing).
 - **Research each topic online** and fold in authoritative context, corrections, and examples the source skipped, with a **source URL on every external claim** (gathered under a `## Citations` section).
@@ -43,13 +43,15 @@ A single agentic run, structured as an **orchestrator with workers**:
 
 ```mermaid
 flowchart TB
-    CLI["study-notes add &lt;url&gt; / file"] --> DEDUP{"already ingested?"}
+    CLI["study-notes add &lt;url / file&gt;"] --> DEDUP{"already ingested?"}
     DEDUP -->|yes| SKIP([skip])
     DEDUP -->|no| KIND{"source type"}
     KIND -->|"YouTube URL"| YT["fetch_youtube_transcript<br/>captions, else local Whisper"]
+    KIND -->|"webpage URL"| WEB["fetch_webpage<br/>Playwright render (logged-in) → trafilatura"]
     KIND -->|"local file"| DOC["read the file directly<br/>Read: text / Markdown / PDF (pandoc for .docx)"]
 
     YT --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
+    WEB --> SPLIT
     DOC --> SPLIT
 
     SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
@@ -115,6 +117,7 @@ docker pull jrottenberg/ffmpeg:6.1-alpine     # frame extraction
 
 # 2. The Python tool
 uv venv && uv pip install -e ".[dev]"
+uv run playwright install chromium            # for webpage ingestion (JS-heavy pages, screenshots)
 
 # 3. Point config.toml at your Obsidian vault — a folder UNDER your home directory
 #    (Colima only bind-mounts $HOME, so the vault must live there)
@@ -127,6 +130,8 @@ mkdir -p "$HOME/vault"                         # then set in config.toml:
 
 The database schema is created automatically on first run — no manual step.
 
+Paywalled sites need a one-time login before their pages can be ingested: `uv run study-notes login <url>` opens a real browser window against a dedicated Playwright profile (not your everyday Chrome profile) — log in there once and the session is reused for later fetches of that site.
+
 > **Setting up with Claude Code?** It reads [`CLAUDE.md`](CLAUDE.md), runs `./scripts/doctor.sh`, and — for anything missing — tells you what and **asks before installing or starting it**. So on a fresh machine you can open the repo in Claude Code and say *"get this running"*: it will detect the gaps and walk you through them, with your permission at each step.
 
 In Obsidian, install the community **Spaced Repetition** plugin if you want to review the cards a note may contain (enable FSRS in its settings).
@@ -136,6 +141,9 @@ In Obsidian, install the community **Spaced Repetition** plugin if you want to r
 ```bash
 # Ingest a YouTube video (auto-categorised)
 uv run study-notes add https://www.youtube.com/watch?v=<id>
+
+# Ingest a webpage (paywalled sites need a one-time `study-notes login <url>` first)
+uv run study-notes add https://example.com/some-article
 
 # Force a category, or merge into a specific note
 uv run study-notes add paper.pdf --category "Machine Learning"
@@ -184,6 +192,11 @@ enabled = true                         # frame extraction on/off
 
 [whisper]
 model = "mlx-community/whisper-small"   # local, key-free fallback for caption-less videos (Apple MPS)
+
+[browser]
+profile = "~/.study-notes/browser"      # dedicated Playwright profile — logins persist here, not your everyday Chrome
+timeout_ms = 30000
+headless = true                        # set false to watch a fetch run; `study-notes login` always opens a visible window
 
 [run]
 dry_run = false
