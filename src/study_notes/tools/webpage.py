@@ -1,6 +1,12 @@
+import os
+import re
 from dataclasses import dataclass
 
 _MIN_BODY_CHARS = 200
+
+_LOGIN_WALL_PATTERN = re.compile(
+    r"login|signin|sign-in|subscribe|account|auth", re.IGNORECASE
+)
 
 
 @dataclass
@@ -13,6 +19,14 @@ class WebpageResult:
 
 class ThinContentError(Exception):
     """Extraction yielded almost nothing (paywall, login wall, empty page)."""
+
+
+class LoginRequiredError(Exception):
+    """Extraction failed and the final URL looks like a login/subscribe wall."""
+
+
+class WebpageFetchError(Exception):
+    """Playwright failed to render the page (navigation error, timeout, ...)."""
 
 
 def extract_readable(html: str, url: str) -> WebpageResult:
@@ -40,3 +54,39 @@ def extract_readable(html: str, url: str) -> WebpageResult:
     source_date = metadata.date if metadata is not None else None
 
     return WebpageResult(url=url, title=title or "", text=body, source_date=source_date)
+
+
+async def fetch_webpage(
+    url: str, *, profile_dir: str, timeout_ms: int, headless: bool = True
+) -> WebpageResult:
+    """Render `url` in a persistent Chromium profile and extract readable text.
+
+    Uses a persistent context (so a prior manual `study-notes login` can
+    reuse cookies/session) rather than a fresh incognito browser.
+    """
+    from playwright.async_api import Error as PlaywrightError
+    from playwright.async_api import async_playwright
+
+    expanded_profile_dir = os.path.expanduser(profile_dir)
+
+    try:
+        async with async_playwright() as p:
+            ctx = await p.chromium.launch_persistent_context(
+                expanded_profile_dir, headless=headless
+            )
+            try:
+                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+                await page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+                html = await page.content()
+                final_url = page.url
+            finally:
+                await ctx.close()
+    except PlaywrightError as exc:
+        raise WebpageFetchError(f"{url}: failed to render page: {exc}") from exc
+
+    try:
+        return extract_readable(html, final_url)
+    except ThinContentError:
+        if _LOGIN_WALL_PATTERN.search(final_url):
+            raise LoginRequiredError(f"log in first: study-notes login {url}") from None
+        raise

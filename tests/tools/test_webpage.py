@@ -1,3 +1,4 @@
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from study_notes.tools.webpage import (
     ThinContentError,
     WebpageResult,
     extract_readable,
+    fetch_webpage,
 )
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "article.html"
@@ -63,3 +65,18 @@ def test_extract_readable_raises_on_paywalled_page_with_rich_metadata():
     """
     with pytest.raises(ThinContentError):
         extract_readable(html, "https://example.com/paywalled")
+
+
+@pytest.mark.browser
+@pytest.mark.asyncio
+async def test_fetch_webpage_renders_local_fixture_via_playwright():
+    file_url = FIXTURE.resolve().as_uri()
+
+    with tempfile.TemporaryDirectory() as profile_dir:
+        result = await fetch_webpage(
+            file_url, profile_dir=profile_dir, timeout_ms=30_000
+        )
+
+    assert isinstance(result, WebpageResult)
+    assert "Why Sourdough Starters Fail in Winter" in result.title
+    assert "Wild yeast and the lactic acid bacteria" in result.text
