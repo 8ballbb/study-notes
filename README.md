@@ -47,11 +47,11 @@ flowchart TB
     DEDUP -->|yes| SKIP([skip])
     DEDUP -->|no| KIND{"source type"}
     KIND -->|"YouTube URL"| YT["fetch_youtube_transcript<br/>captions, else local Whisper"]
-    KIND -->|"webpage URL"| WEB["fetch_webpage<br/>Playwright render (logged-in) → trafilatura"]
+    KIND -->|"webpage URL"| WEBPAGE["fetch_webpage<br/>Playwright render (logged-in) → trafilatura"]
     KIND -->|"local file"| DOC["read the file directly<br/>Read: text / Markdown / PDF (pandoc for .docx)"]
 
     YT --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
-    WEB --> SPLIT
+    WEBPAGE --> SPLIT
     DOC --> SPLIT
 
     SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
