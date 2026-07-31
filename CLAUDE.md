@@ -11,6 +11,11 @@ so paywalled/JS-heavy sites work after a one-time `study-notes login <url>` — 
 extracts the article text), and **local file** (read directly: text/Markdown/PDF, pandoc for
 `.docx`).
 
+Webpages may also route through a reader/mirror via the `[paywall]` config (`rules` of
+`{hosts, via}`) — `webpage.rewrite_for_paywall` fetches matching hosts through the mirror (e.g.
+Medium → Freedium) while the note's source stays the ORIGINAL URL. Mirror domains rotate, so the
+`via` base is config, never hardcoded.
+
 ## Commands
 
 ```bash

@@ -132,6 +132,8 @@ The database schema is created automatically on first run — no manual step.
 
 Paywalled sites need a one-time login before their pages can be ingested: `uv run study-notes login <url>` opens a real browser window against a dedicated Playwright profile (not your everyday Chrome profile) — log in there once and the session is reused for later fetches of that site.
 
+Alternatively, for sites covered by a public reader/mirror, the `[paywall]` config (see Configuration) routes matching hosts through it automatically — e.g. Medium and Medium-hosted publications via **Freedium**. The page is *fetched* through the mirror, but the note's recorded source stays the original article URL. Mirror domains rotate, so the base is config, not hardcoded.
+
 > **Setting up with Claude Code?** It reads [`CLAUDE.md`](CLAUDE.md), runs `./scripts/doctor.sh`, and — for anything missing — tells you what and **asks before installing or starting it**. So on a fresh machine you can open the repo in Claude Code and say *"get this running"*: it will detect the gaps and walk you through them, with your permission at each step.
 
 In Obsidian, install the community **Spaced Repetition** plugin if you want to review the cards a note may contain (enable FSRS in its settings).
@@ -197,6 +199,11 @@ model = "mlx-community/whisper-small"   # local, key-free fallback for caption-l
 profile = "~/.study-notes/browser"      # dedicated Playwright profile — logins persist here, not your everyday Chrome
 timeout_ms = 30000
 headless = true                        # set false to watch a fetch run; `study-notes login` always opens a visible window
+
+[paywall]                              # fetch matching hosts via a reader/mirror; the note's source stays the ORIGINAL URL
+rules = [
+  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium.cfd/{url}" },
+]                                      # add news hosts via archive.today (https://archive.ph/newest/{url}) or SMRY (https://smry.ai/{url})
 
 [run]
 dry_run = false

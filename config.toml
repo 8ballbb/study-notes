@@ -34,3 +34,15 @@ model = "mlx-community/whisper-small"
 profile = "~/.study-notes/browser"
 timeout_ms = 30000
 headless = true
+
+# Route matching hosts through a reader/mirror to bypass paywalls. The page is
+# FETCHED via the mirror, but the note's source/resource stays the ORIGINAL
+# article URL. `{url}` is replaced with the original URL. Mirror domains rotate —
+# swap `via` when one stops working (Freedium in particular re-mirrors often).
+[paywall]
+rules = [
+  { hosts = ["medium.com", "towardsdatascience.com", "betterprogramming.pub", "levelup.gitconnected.com"], via = "https://freedium.cfd/{url}" },
+]
+# More services you can add to `rules` above (list the hosts you actually hit):
+#   general news → archive.today:  { hosts = ["nytimes.com", "bloomberg.com"], via = "https://archive.ph/newest/{url}" }
+#   alt reader   → SMRY.ai:        { hosts = ["theatlantic.com"], via = "https://smry.ai/{url}" }

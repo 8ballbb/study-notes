@@ -34,3 +34,8 @@ model = "mlx-community/whisper-small"
 profile = "~/.study-notes/browser"
 timeout_ms = 30000
 headless = true
+
+[paywall]
+rules = [
+  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium.cfd/{url}" },
+]

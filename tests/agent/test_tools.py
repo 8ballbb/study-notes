@@ -132,12 +132,18 @@ async def test_fetch_webpage_tool_returns_ok_shape(tmp_path, db_conn, monkeypatc
     from study_notes.agent import tools as t
     from study_notes.tools.webpage import WebpageResult
 
-    async def fake_fetch_webpage(url, *, profile_dir, timeout_ms, headless=True):
+    captured = {}
+
+    async def fake_fetch_webpage(url, *, profile_dir, timeout_ms, headless=True, paywall_rules=()):
+        captured["paywall_rules"] = paywall_rules
         return WebpageResult(url=url, title="Example Title", text="Example body text.",
                              source_date="2025-01-02")
 
     monkeypatch.setattr(t.webpage, "fetch_webpage", fake_fetch_webpage)
-    _, tools = t.build_tool_server(_ctx(tmp_path, db_conn))
+    ctx = _ctx(tmp_path, db_conn)
+    _, tools = t.build_tool_server(ctx)
     out = json.loads(_text(await _call(tools, "fetch_webpage", {"url": "https://example.com/a"})))
     assert out == {"url": "https://example.com/a", "title": "Example Title",
                     "text": "Example body text.", "source_date": "2025-01-02"}
+    # the wrapper forwards the configured paywall rules (empty by default here)
+    assert captured["paywall_rules"] == ctx.config.paywall.get("rules", [])

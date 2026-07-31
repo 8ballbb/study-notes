@@ -19,6 +19,29 @@ def _is_login_wall(url: str) -> bool:
     return bool(_LOGIN_WALL_PATTERN.search(url))
 
 
+def rewrite_for_paywall(url: str, rules) -> str:
+    """Route a URL through a reader/mirror when its host matches a paywall rule.
+
+    `rules` is a list of ``{"hosts": [...], "via": "https://mirror/{url}"}`` dicts
+    (from ``[paywall]`` config). If `url`'s host equals or is a subdomain of any
+    rule host, return the rule's ``via`` template with ``{url}`` replaced by the
+    ORIGINAL url; otherwise return `url` unchanged. Fetch through the mirror, but
+    keep the original url as the note's source. Mirror domains rotate, so the
+    ``via`` base is user-configured, never hardcoded.
+    """
+    from urllib.parse import urlsplit
+
+    host = (urlsplit(url).hostname or "").lower()
+    if not host:
+        return url
+    for rule in rules or ():
+        for h in rule.get("hosts", []):
+            h = str(h).lower().lstrip(".")
+            if h and (host == h or host.endswith("." + h)):
+                return str(rule.get("via", "{url}")).replace("{url}", url)
+    return url
+
+
 @dataclass
 class WebpageResult:
     url: str
@@ -98,17 +121,22 @@ def browser_login(profile_dir: str, url: str | None = None) -> None:
 
 
 async def fetch_webpage(
-    url: str, *, profile_dir: str, timeout_ms: int, headless: bool = True
+    url: str, *, profile_dir: str, timeout_ms: int, headless: bool = True,
+    paywall_rules=(),
 ) -> WebpageResult:
     """Render `url` in a persistent Chromium profile and extract readable text.
 
     Uses a persistent context (so a prior manual `study-notes login` can
-    reuse cookies/session) rather than a fresh incognito browser.
+    reuse cookies/session) rather than a fresh incognito browser. When `url`
+    matches a `paywall_rules` entry, the page is fetched through the configured
+    reader/mirror, but the returned `WebpageResult.url` stays the ORIGINAL url so
+    the note's source/provenance points at the real article, not the mirror.
     """
     from playwright.async_api import Error as PlaywrightError
     from playwright.async_api import async_playwright
 
     expanded_profile_dir = os.path.expanduser(profile_dir)
+    fetch_url = rewrite_for_paywall(url, paywall_rules)
 
     try:
         async with async_playwright() as p:
@@ -117,7 +145,7 @@ async def fetch_webpage(
             )
             try:
                 page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-                await page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+                await page.goto(fetch_url, wait_until="networkidle", timeout=timeout_ms)
                 html = await page.content()
                 final_url = page.url
             finally:
@@ -126,7 +154,7 @@ async def fetch_webpage(
         raise WebpageFetchError(f"{url}: failed to render page: {exc}") from exc
 
     try:
-        return extract_readable(html, final_url)
+        return extract_readable(html, url)  # provenance = original url, even via a mirror
     except ThinContentError:
         if _is_login_wall(final_url):
             raise LoginRequiredError(f"log in first: study-notes login {url}") from None

@@ -38,6 +38,7 @@ def build_tool_server(ctx: EngineContext):
             profile_dir=os.path.expanduser(ctx.config.browser["profile"]),
             timeout_ms=int(ctx.config.browser.get("timeout_ms", 30000)),
             headless=bool(ctx.config.browser.get("headless", True)),
+            paywall_rules=ctx.config.paywall.get("rules", []),
         )
         return _ok({"url": r.url, "title": r.title, "text": r.text,
                     "source_date": r.source_date})
