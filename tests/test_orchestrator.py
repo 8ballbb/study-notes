@@ -106,6 +106,39 @@ def test_add_runs_records_and_returns_paths(db_conn, tmp_path):
     assert log.lookup("youtube:772CUg2xYAo").note_paths == res.note_paths  # recorded
 
 
+def test_add_no_notes_written_fails_and_does_not_record(db_conn, tmp_path):
+    from study_notes.ingest import IngestLog
+    from study_notes.orchestrator import add
+
+    index = VaultIndex(db_conn, FakeEmbedder())
+    log = IngestLog(db_conn)
+    url = "https://youtu.be/772CUg2xYAo"
+
+    def fake_engine(prompt):
+        # simulates fetch_webpage raising LoginRequiredError/WebpageFetchError:
+        # the agent run finishes without ever calling vault_write.
+        return "tool error: login required"
+
+    res = add(url, config=_cfg(tmp_path), index=index, ingest_log=log,
+              run_engine=fake_engine)
+    assert res.status == "failed"
+    assert res.note_paths == []
+    assert log.lookup("youtube:772CUg2xYAo") is None  # nothing recorded on failure
+
+    # retry with the same input must not be short-circuited by dedup
+    called = {"ran": False}
+    def fake_engine_retry(prompt):
+        called["ran"] = True
+        _seed_note(index, url)
+        return "wrote 1 note"
+
+    res2 = add(url, config=_cfg(tmp_path), index=index, ingest_log=log,
+               run_engine=fake_engine_retry)
+    assert called["ran"] is True
+    assert res2.status == "ingested"
+    assert log.lookup("youtube:772CUg2xYAo").note_paths == res2.note_paths
+
+
 def test_add_dry_run_does_not_record(db_conn, tmp_path):
     from study_notes.ingest import IngestLog
     from study_notes.orchestrator import add

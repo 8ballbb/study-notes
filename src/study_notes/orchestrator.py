@@ -15,7 +15,7 @@ from study_notes.vault_index import VaultIndex
 
 @dataclass
 class AddResult:
-    status: str  # "ingested" | "skipped" | "dry_run"
+    status: str  # "ingested" | "skipped" | "dry_run" | "failed"
     source_id: str
     note_paths: list[str]
     message: str
@@ -69,6 +69,12 @@ def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: Ingest
         return AddResult("dry_run", source_id, [], output or "dry run — nothing written")
 
     note_paths = index.paths_for_source(origin)
+    if not note_paths:
+        return AddResult(
+            "failed", source_id, [],
+            "no note was written — the source may need `study-notes login` first, or the fetch/agent run failed. "
+            "Nothing was recorded; re-run to retry.",
+        )
     ingest_log.record(source_id, source_type, origin, note_paths)
     return AddResult("ingested", source_id, note_paths,
                      f"ingested {len(note_paths)} note(s)")
