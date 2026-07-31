@@ -168,6 +168,16 @@ uv run pytest -m e2e                                      # real end-to-end agen
 
 See [`README-dev.md`](README-dev.md) for the full test matrix and the Docker/Colima details.
 
+**Project conventions & AI workflow.** [`CLAUDE.md`](CLAUDE.md) is the portable brief for working in
+this repo (with [Claude Code](https://claude.com/claude-code) or by hand): the command reference,
+architecture map, invariants (non-destructive writes, OKF frontmatter, SDK isolation), and how to get
+oriented on a fresh clone. The design history — why each piece exists and how it was built — lives as
+specs and plans under [`docs/superpowers/`](docs/superpowers/).
+
+> **Occasional retry:** an ingest sometimes ends with `Claude Code returned an error result: success`
+> — a transient SDK teardown error, not a failed ingest. Re-run it; a failed *real* run isn't recorded,
+> so the retry proceeds fresh. (Tracked in `CLAUDE.md` → Known issues.)
+
 ## Roadmap
 
 Deliberately deferred, not blocking:

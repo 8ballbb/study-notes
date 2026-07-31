@@ -20,6 +20,17 @@ uv run pytest -m e2e                                     # live agentic ingest �
 It is bundled in the suite unless you exclude it — always add `and not e2e` for routine runs.
 **Ask the user before running the full suite or any e2e / real-ingest run.**
 
+## Working preferences (how the user wants Claude Code to operate)
+- **Ask before running tests or any long agentic run.** The pytest suite (with the e2e) and any
+  real ingest cost time and Claude tokens — make the change, say exactly what you'd verify, then
+  ask. Reading files, web research, and non-test shell commands are fine without asking.
+- **Prefer Docker for services.** Run Postgres/infra in Docker (Colima on macOS), never a host
+  install — see `docker-compose.yml` (pinned images). The user interrupted a host `brew install
+  postgresql` to insist on this.
+- **Follow the superpowers workflow** for non-trivial changes (see Process below), and **branch
+  before implementing** — don't build directly on `master`.
+- Prose/notes voice is **Feynman-plain**; keep it (see `prompts/note-writing.md`).
+
 ## Infra
 - **Docker via Colima** (not Docker Desktop). Postgres 17 + pgvector (`docker compose up -d`) and
   ffmpeg run in containers; the Python app runs on the **host** because BGE-M3 and mlx-whisper need
@@ -59,3 +70,24 @@ It is bundled in the suite unless you exclude it — always add `and not e2e` fo
 This project is built with the **superpowers** workflow: brainstorm → spec → plan → subagent-driven
 implementation (TDD, per-task review, final whole-branch review) → finish. Follow it for non-trivial
 changes; keep specs/plans under `docs/superpowers/`.
+
+## Known issues
+- **Intermittent teardown error on agentic runs.** A run occasionally ends with
+  `EngineError`/`error: Claude Code returned an error result: success` — the SDK reformatting a
+  non-zero CLI-subprocess exit at teardown, even when the work substantively completed. It's
+  transient: **re-running usually succeeds** (a failed *real* ingest is not recorded in the ingest
+  log, so a retry proceeds fresh). Candidate hardening (not yet done): in `run_ingest`, treat that
+  specific `ProcessError` as success when a terminal success `ResultMessage` was already observed,
+  or auto-retry once.
+
+## Resuming on a new machine
+Claude Code's per-project **auto-memory** (`~/.claude/projects/<path>/memory/`) is machine-local and
+does **not** travel with the repo — this `CLAUDE.md`, the `README`, `docs/superpowers/` (design
+specs + plans), and git history are what port. To get oriented on a fresh clone:
+1. Read this file, then `README.md` (setup) and `README-dev.md` (test matrix).
+2. Skim `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design history / rationale.
+3. Set up infra: `colima start && docker compose up -d`; `uv pip install -e ".[dev]"`; point
+   `config.toml` `vault_path` at a folder under `$HOME`. Schema auto-creates on first run.
+4. Run the token-free suite to confirm the environment: `uv run pytest -m "not slow and not docker
+   and not e2e"`.
+Keep this file current — it is the project's portable memory.
