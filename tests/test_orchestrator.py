@@ -34,6 +34,40 @@ def test_resolve_source_youtube_vs_file(tmp_path):
     assert stype2 == "file" and sid2.startswith("sha256:")
 
 
+def test_resolve_source_webpage_url():
+    from study_notes.orchestrator import resolve_source
+    url = "https://example.com/article?utm_source=x"
+    sid, stype, origin = resolve_source(url)
+    assert stype == "webpage"
+    assert sid == "url:https://example.com/article"
+    assert origin == url
+
+
+def test_resolve_source_existing_file(tmp_path):
+    from study_notes.orchestrator import resolve_source
+    f = tmp_path / "notes.txt"
+    f.write_text("hello")
+    sid, stype, origin = resolve_source(str(f))
+    assert stype == "file"
+    assert sid.startswith("sha256:")
+    assert origin == str(f)
+
+
+def test_resolve_source_nonexistent_path_raises(tmp_path):
+    from study_notes.orchestrator import resolve_source
+    from study_notes.orchestrator import UnsupportedSourceError
+    missing = tmp_path / "does-not-exist.txt"
+    with pytest.raises(UnsupportedSourceError):
+        resolve_source(str(missing))
+
+
+def test_resolve_source_garbage_string_raises():
+    from study_notes.orchestrator import resolve_source
+    from study_notes.orchestrator import UnsupportedSourceError
+    with pytest.raises(UnsupportedSourceError):
+        resolve_source("not a url or a path !!")
+
+
 def test_add_skips_already_ingested(db_conn, tmp_path):
     from study_notes.ingest import IngestLog
     from study_notes.orchestrator import add

@@ -5,7 +5,9 @@ from study_notes.config import Config
 from study_notes.ingest import (
     IngestLog,
     SourceIdentityError,
+    UnsupportedSourceError,
     file_source_id,
+    webpage_source_id,
     youtube_source_id,
 )
 from study_notes.vault_index import VaultIndex
@@ -24,7 +26,15 @@ def resolve_source(raw: str) -> tuple[str, str, str]:
         return youtube_source_id(raw), "youtube", raw
     except SourceIdentityError:
         pass
-    return file_source_id(Path(raw)), "file", str(raw)
+    try:
+        return webpage_source_id(raw), "webpage", raw
+    except SourceIdentityError:
+        pass
+    if Path(raw).exists():
+        return file_source_id(Path(raw)), "file", str(raw)
+    raise UnsupportedSourceError(
+        "not a YouTube URL, an http(s) URL, or an existing file: " + raw
+    )
 
 
 def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str:
