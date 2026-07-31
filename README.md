@@ -1,8 +1,21 @@
-# Study Notes
+<div align="center">
 
-Turn educational YouTube videos (and documents) into concise, well-written study notes in your own [Obsidian](https://obsidian.md) vault — enriched with cited web research, organised into categories, and searchable.
+# 📚 Study Notes
 
-It's a personal, **local-first** command-line tool: your notes are plain Markdown you own, not rows in someone else's SaaS. Give it a link, and a few minutes later you have study-ready notes that are often *better than the source*.
+**Turn educational YouTube videos & documents into concise, enriched study notes in your own [Obsidian](https://obsidian.md) vault.**
+
+Local-first · agentic · plain Markdown you own — not rows in someone else's SaaS.<br>
+Give it a link, and a few minutes later you have study-ready notes that are often *better than the source*.
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/Built%20with-Claude%20Agent%20SDK-D97757?style=flat-square&logo=anthropic&logoColor=white" alt="Built with Claude Agent SDK">
+  <img src="https://img.shields.io/badge/macOS-Apple%20Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS · Apple Silicon">
+  <img src="https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL + pgvector">
+  <img src="https://img.shields.io/badge/Local--first-100%25-16A34A?style=flat-square" alt="Local-first">
+</p>
+
+</div>
 
 ```bash
 uv run study-notes add https://www.youtube.com/watch?v=<id>
