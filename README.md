@@ -41,17 +41,16 @@ Everything lands as Markdown in your vault, indexed for semantic search.
 
 A single agentic run, structured as an **orchestrator with workers**:
 
-```
-study-notes add <url>
-  │  (Python: dedup check → skip if already ingested)
-  ▼
-opus ORCHESTRATOR   reads & decomposes the source, decides categories/placement,
-  │                 integrates results, screens for slop, writes, verifies
-  ├─▶ extractor subagents  (parallel, cheaper model) — write one note per topic
-  └─▶ enricher subagents   (parallel) — web research with cited sources
-  │
-  ▼  (Python: record what was written)
-notes in your Obsidian vault
+```mermaid
+flowchart TD
+    CLI["study-notes add &lt;url&gt;"] --> DEDUP{"already ingested?"}
+    DEDUP -->|yes| SKIP([skip])
+    DEDUP -->|no| ORCH["opus orchestrator<br/>decompose · categorise · integrate · screen · write"]
+    ORCH -->|"each topic, in parallel"| EX["extractor<br/>note + targeted frames"]
+    ORCH -->|"each topic, in parallel"| EN["enricher<br/>cited web research"]
+    EX --> ORCH
+    EN --> ORCH
+    ORCH --> VAULT[("Obsidian vault<br/>Markdown notes + frames")]
 ```
 
 The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel — so a multi-topic source doesn't crawl through one giant sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
