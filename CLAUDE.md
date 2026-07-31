@@ -80,14 +80,22 @@ changes; keep specs/plans under `docs/superpowers/`.
   specific `ProcessError` as success when a terminal success `ResultMessage` was already observed,
   or auto-retry once.
 
-## Resuming on a new machine
+## New machine / resuming (self-checking onboarding)
 Claude Code's per-project **auto-memory** (`~/.claude/projects/<path>/memory/`) is machine-local and
 does **not** travel with the repo — this `CLAUDE.md`, the `README`, `docs/superpowers/` (design
-specs + plans), and git history are what port. To get oriented on a fresh clone:
-1. Read this file, then `README.md` (setup) and `README-dev.md` (test matrix).
-2. Skim `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design history / rationale.
-3. Set up infra: `colima start && docker compose up -d`; `uv pip install -e ".[dev]"`; point
-   `config.toml` `vault_path` at a folder under `$HOME`. Schema auto-creates on first run.
-4. Run the token-free suite to confirm the environment: `uv run pytest -m "not slow and not docker
-   and not e2e"`.
-Keep this file current — it is the project's portable memory.
+specs + plans), `scripts/doctor.sh`, and git history are what port. On a fresh clone:
+
+1. Read this file, then `README.md` (setup) and `README-dev.md` (test matrix); skim
+   `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design rationale.
+2. **Run `./scripts/doctor.sh`** — a read-only check of every prerequisite and service (Homebrew,
+   uv, Colima, the Docker daemon, the `study_notes_db` Postgres container, the ffmpeg image, the
+   Python deps, and `config.toml`'s `vault_path`). It prints the exact fix for each gap and changes
+   nothing.
+3. **For each `[MISS]` item: tell the user what's missing and the suggested fix, and ASK PERMISSION
+   before installing or starting anything** (per Working preferences — never install/start infra
+   unprompted). Run only the approved fixes, then re-run the doctor until everything is `[ok]`.
+4. Confirm with the token-free suite: `uv run pytest -m "not slow and not docker and not e2e"`.
+
+When you add a new prerequisite or service, **add a matching check to `scripts/doctor.sh`** so the
+onboarding stays complete. Keep this file and the doctor current — together they are the project's
+portable, self-checking memory.

@@ -52,21 +52,37 @@ The orchestrator keeps a lean context and delegates the bulky per-topic work to 
 
 ## Setup
 
+**On a new machine, run the doctor first** — it checks every prerequisite and service and prints exactly what's missing plus the fix for each. It's **read-only**: it installs, starts, and changes nothing.
+
 ```bash
-# 1. Docker runtime + the database (Postgres 17 + pgvector)
+git clone https://github.com/8ballbb/study-notes && cd study-notes
+./scripts/doctor.sh
+```
+
+Then set up whatever it flagged (a first-time machine needs all of it):
+
+```bash
+# 1. Docker runtime (no Docker Desktop needed) + the database + the ffmpeg image
 brew install colima docker docker-compose
 colima start
-docker compose up -d                 # starts the study_notes database
-docker pull jrottenberg/ffmpeg:6.1-alpine   # for frame extraction
+docker compose up -d                          # Postgres 17 + pgvector (container: study_notes_db)
+docker pull jrottenberg/ffmpeg:6.1-alpine     # frame extraction
 
-# 2. The tool
+# 2. The Python tool
 uv venv && uv pip install -e ".[dev]"
 
-# 3. Point config.toml at your vault (a folder under your home directory)
+# 3. Point config.toml at your Obsidian vault — a folder UNDER your home directory
+#    (Colima only bind-mounts $HOME, so the vault must live there)
+mkdir -p "$HOME/vault"                         # then set in config.toml:
 #    vault_path = "/Users/you/vault"
+
+# 4. Verify — should be all [ok]
+./scripts/doctor.sh
 ```
 
 The database schema is created automatically on first run — no manual step.
+
+> **Setting up with Claude Code?** It reads [`CLAUDE.md`](CLAUDE.md), runs `./scripts/doctor.sh`, and — for anything missing — tells you what and **asks before installing or starting it**. So on a fresh machine you can open the repo in Claude Code and say *"get this running"*: it will detect the gaps and walk you through them, with your permission at each step.
 
 In Obsidian, install the community **Spaced Repetition** plugin if you want to review the cards a note may contain (enable FSRS in its settings).
 
