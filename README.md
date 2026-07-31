@@ -106,7 +106,13 @@ git clone https://github.com/8ballbb/study-notes && cd study-notes
 ./scripts/doctor.sh
 ```
 
-Then set up whatever it flagged (a first-time machine needs all of it):
+**Then set it all up with one command** — it prints its plan, asks once, then installs/starts only what's missing (Homebrew deps, Colima, the database + ffmpeg image, Python deps, Chromium) and finishes by re-running the doctor:
+
+```bash
+make setup          # or: ./scripts/setup.sh
+```
+
+<details><summary>Or do it by hand (what <code>make setup</code> runs)</summary>
 
 ```bash
 # 1. Docker runtime (no Docker Desktop needed) + the database + the ffmpeg image
@@ -127,6 +133,8 @@ mkdir -p "$HOME/vault"                         # then set in config.toml:
 # 4. Verify — should be all [ok]
 ./scripts/doctor.sh
 ```
+
+</details>
 
 The database schema is created automatically on first run — no manual step.
 
@@ -202,7 +210,7 @@ headless = true                        # set false to watch a fetch run; `study-
 
 [paywall]                              # fetch matching hosts via a reader/mirror; the note's source stays the ORIGINAL URL
 rules = [
-  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium.cfd/{url}" },
+  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium-mirror.cfd/{url}" },
 ]                                      # add news hosts via archive.today (https://archive.ph/newest/{url}) or SMRY (https://smry.ai/{url})
 
 [run]

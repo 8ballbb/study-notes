@@ -19,7 +19,9 @@ Medium → Freedium) while the note's source stays the ORIGINAL URL. Mirror doma
 ## Commands
 
 ```bash
-uv pip install -e ".[dev]"                               # install
+make setup                                               # one-command setup (plan→confirm→run); or ./scripts/setup.sh
+make doctor                                              # read-only env check; make test / make db also exist
+uv pip install -e ".[dev]"                               # (manual install, if not using make setup)
 uv run playwright install chromium                       # for webpage ingestion
 uv run study-notes add <url|file> [--category C] [--note N] [--dry-run] [--force]
 uv run study-notes login <url>                            # one-time login for a paywalled site (opens a real browser)
@@ -108,9 +110,12 @@ specs + plans), `scripts/doctor.sh`, and git history are what port. On a fresh c
    `config.toml`'s `vault_path`). It prints the exact fix for each gap and changes nothing.
 3. **For each `[MISS]` item: tell the user what's missing and the suggested fix, and ASK PERMISSION
    before installing or starting anything** (per Working preferences — never install/start infra
-   unprompted). Run only the approved fixes, then re-run the doctor until everything is `[ok]`.
-4. Confirm with the token-free suite: `uv run pytest -m "not slow and not docker and not e2e"`.
+   unprompted). Either run the approved fixes yourself, or point them at **`make setup`**
+   (`./scripts/setup.sh`) — it prints its plan, asks once, then installs/starts everything missing
+   and re-runs the doctor. Re-run the doctor until everything is `[ok]`.
+4. Confirm with the token-free suite: `make test` (`uv run pytest -m "not slow and not docker and not e2e and not browser"`).
 
-When you add a new prerequisite or service, **add a matching check to `scripts/doctor.sh`** so the
+When you add a new prerequisite or service, **add a matching check to `scripts/doctor.sh`** (and, if
+it needs installing/starting, a step in `scripts/setup.sh`) so the
 onboarding stays complete. Keep this file and the doctor current — together they are the project's
 portable, self-checking memory.
