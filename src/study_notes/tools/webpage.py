@@ -5,8 +5,18 @@ from dataclasses import dataclass
 _MIN_BODY_CHARS = 200
 
 _LOGIN_WALL_PATTERN = re.compile(
-    r"login|signin|sign-in|subscribe|account|auth", re.IGNORECASE
+    r"\b(login|signin|sign-in|subscribe|account|auth|paywall)\b", re.IGNORECASE
 )
+
+
+def _is_login_wall(url: str) -> bool:
+    """True if `url` looks like a login/subscribe/paywall page.
+
+    Matches whole tokens only (word-boundary anchored) so it doesn't
+    substring-match inside unrelated words like /author/, /oauth/callback,
+    /accounting-tips, or /subscribers-only.
+    """
+    return bool(_LOGIN_WALL_PATTERN.search(url))
 
 
 @dataclass
@@ -87,6 +97,6 @@ async def fetch_webpage(
     try:
         return extract_readable(html, final_url)
     except ThinContentError:
-        if _LOGIN_WALL_PATTERN.search(final_url):
+        if _is_login_wall(final_url):
             raise LoginRequiredError(f"log in first: study-notes login {url}") from None
         raise

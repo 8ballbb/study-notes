@@ -6,6 +6,7 @@ import pytest
 from study_notes.tools.webpage import (
     ThinContentError,
     WebpageResult,
+    _is_login_wall,
     extract_readable,
     fetch_webpage,
 )
@@ -65,6 +66,32 @@ def test_extract_readable_raises_on_paywalled_page_with_rich_metadata():
     """
     with pytest.raises(ThinContentError):
         extract_readable(html, "https://example.com/paywalled")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x.com/login",
+        "https://x.com/user-login",
+        "https://x.com/subscribe",
+        "https://x.com/account/settings",
+    ],
+)
+def test_is_login_wall_matches_whole_tokens(url):
+    assert _is_login_wall(url) is True
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x.com/author/jane-doe",
+        "https://x.com/oauth/callback",
+        "https://x.com/accounting-tips",
+        "https://x.com/blog/post",
+    ],
+)
+def test_is_login_wall_ignores_substring_matches_inside_words(url):
+    assert _is_login_wall(url) is False
 
 
 @pytest.mark.browser
