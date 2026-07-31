@@ -16,6 +16,7 @@ class Config:
     dry_run: bool
     frames: dict = field(default_factory=dict)
     whisper_model: str | None = None
+    browser: dict = field(default_factory=dict)
 
 
 def load_config(path: Path) -> Config:
@@ -34,4 +35,5 @@ def load_config(path: Path) -> Config:
         dry_run=bool(data["run"]["dry_run"]),
         frames=dict(data.get("frames", {})),
         whisper_model=data.get("whisper", {}).get("model"),
+        browser=dict(data.get("browser", {})),
     )

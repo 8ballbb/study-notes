@@ -19,6 +19,8 @@ def test_load_config_reads_all_fields():
     assert cfg.dry_run is False
     assert cfg.frames["budget"] == 4
     assert cfg.whisper_model == "mlx-community/whisper-small"
+    assert cfg.browser["profile"]
+    assert cfg.browser["timeout_ms"] == 30000
 
 
 def test_load_config_missing_file_raises():

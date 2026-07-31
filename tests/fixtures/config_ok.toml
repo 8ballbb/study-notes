@@ -29,3 +29,8 @@ enabled = true
 
 [whisper]
 model = "mlx-community/whisper-small"
+
+[browser]
+profile = "~/.study-notes/browser"
+timeout_ms = 30000
+headless = true
