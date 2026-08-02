@@ -37,5 +37,5 @@ headless = true
 
 [paywall]
 rules = [
-  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium.cfd/{url}" },
+  { hosts = ["medium.com", "towardsdatascience.com"], via = "https://freedium-mirror.cfd/{url}" },
 ]

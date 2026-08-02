@@ -111,25 +111,25 @@ async def test_fetch_webpage_renders_local_fixture_via_playwright():
 
 # --- paywall mirror routing -------------------------------------------------
 
-_FREEDIUM = [{"hosts": ["medium.com", "towardsdatascience.com"], "via": "https://freedium.cfd/{url}"}]
+_FREEDIUM = [{"hosts": ["medium.com", "towardsdatascience.com"], "via": "https://freedium-mirror.cfd/{url}"}]
 
 
 def test_rewrite_routes_medium_through_freedium():
     from study_notes.tools.webpage import rewrite_for_paywall
     u = "https://medium.com/@GaoDalie_AI/some-article-713a9cf2e985"
-    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium.cfd/" + u
+    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_matches_subdomains():
     from study_notes.tools.webpage import rewrite_for_paywall
     u = "https://gaodalie.medium.com/post-xyz"
-    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium.cfd/" + u
+    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_matches_listed_custom_domain():
     from study_notes.tools.webpage import rewrite_for_paywall
     u = "https://towardsdatascience.com/deep-thing-123"
-    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium.cfd/" + u
+    assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_leaves_unmatched_host_unchanged():

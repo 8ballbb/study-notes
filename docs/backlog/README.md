@@ -27,6 +27,66 @@ Rough priority: 🔴 worth doing soon · 🟡 nice to have · 🟢 someday / may
 
 ## Enhancements
 
+### Capture (getting better notes out of sources)
+
+- 🔴 **Iterative, human-in-the-loop capture — a guided session, not a one-shot.** Today `add` is
+  fire-and-forget from a single prompt. Add an `--interactive` mode that turns capture into a
+  dialogue with checkpoints: (1) the model asks a few framing questions up front (your goal, your
+  level, what to emphasise vs. ignore); (2) proposes an outline/approach you can steer; (3) surfaces
+  judgment calls *as it works* ("the talk spends 10 min on X — deep-dive, summarise, or skip?"); and
+  (4) lets you interrogate the source mid-capture ("what did they mean by Y?") and folds the answer
+  in — before a final draft + edit round. The bar is that it feels like pair-studying with a tutor
+  who's actually read the source, not a summariser. Could remember style preferences across runs.
+  Distinct from `refine` below (which reshapes a *finished* note; this shapes the *first* capture).
+  *Highest-leverage capture idea.*
+- 🔴 **Partial / region capture — natural-language-guided, with a confirmation stage.** Capture only
+  part of a source. Crucially this is driven by the user's prompt in plain language ("just the part
+  about backpressure", "the second half"), **not** raw timestamps — so the flow must be:
+  user specifies → the LLM locates the matching span in the transcript/document → it **shows what it
+  found (range + a snippet) and asks the user to confirm or adjust** → only then extract. The
+  find-then-confirm handshake is the whole point; guessing silently would capture the wrong slice.
+  Reuses timed transcript segments; pairs with chapter segmentation below.
+- 🟡 **Multi-source synthesis into one note.** Point several sources at one topic and get **one**
+  authoritative, reconciled note (citing each source), not N notes. Genuine synthesis means the model
+  must *study all the sources and derive a structure from the content itself* rather than slot them
+  into a fixed template — i.e. it inherently uses the `--inspired` capability below. Distinct from
+  batch-ingest (many→many) and cross-source topic dedup (merge after the fact); this is intentional
+  **many→one** capture.
+- 🟡 **`--inspired` — emergent, content-derived note structure (exploratory capture).** An optional
+  mode where, instead of following a fixed note template, the model *studies the material, explores
+  it (incl. web research), and designs a bespoke structure* — aiming to produce a **better-organised
+  note than the source's own ordering** ("be inspired by it, then improve on it"). Applies to a
+  single source as much as to multi-source synthesis (which requires it inherently). This is the
+  exploratory counterpart to content-type templates below — worth designing the two as selectable
+  structuring strategies: **templates** = fast, safe, predictable; **`--inspired`** = higher
+  cost/latency, higher ceiling, bespoke.
+- 🟡 **Content-type-aware capture templates.** A conference talk, a coding tutorial, a news article,
+  and a lecture want different note shapes. Auto-detect (or `--type`) and switch the note-writing
+  structure accordingly — a tutorial gets ordered steps + a code block; a talk gets thesis +
+  arguments; news gets who/what/claims. The **template-driven** counterpart to `--inspired`: fast and
+  predictable where `--inspired` is exploratory. Reuses the note-writing guide, parameterised. Lifts
+  capture *relevance*.
+- 🟡 **Chapter-aware segmentation for long sources.** Extract long videos/articles section-by-section
+  (YouTube chapters / headings / auto-segmentation) then assemble, so a 2-hour lecture keeps
+  granularity instead of collapsing to a thin summary. Reuses the extractor per-segment; also
+  underpins partial capture above.
+- 🟡 **Source-anchored claims (deep-linking).** Every claim links back to its exact origin — a
+  YouTube `&t=` timestamp, PDF page, or article paragraph — for one-click verify/re-watch. Only
+  frames carry a timestamp today. Reuses timed transcript segments; makes a web viewer materially
+  better than plain Obsidian.
+- 🟡 **A structured technical-document pipeline (papers / slides / repos).** A genuinely *new*
+  pipeline, not just another `yt-dlp` host: structure-aware ingestion for academic PDFs/arXiv
+  (sections, equations→LaTeX, tables→Markdown, references), slide decks (`.pptx`/Google Slides), and
+  code repos (README + key files → a "how this works" note). Extends the pandoc/PDF path with
+  structure parsing. Distinct from the generic "more video sources" item above.
+- 🟡 **A web app viewer/exporter — so Obsidian isn't the only reader.** Export/serve the vault as a
+  browsable, searchable web app (a natural fit for the `impeccable` skill) so notes can be read
+  beautifully outside Obsidian. *Deliberately left unspecified — design it properly if/when we decide
+  to build it.* The BGE-M3 hybrid index and OKF frontmatter are ready to back it; source-anchored
+  deep-links (above) would make it genuinely better than Obsidian for source-grounded reading.
+
+### Other
+
 - 🟡 **Auto-link notes into a knowledge graph.** Notes sit siloed in category folders; the payoff of Obsidian is connections. Use the existing BGE-M3 + hybrid index — at write time and as a `study-notes link` pass — to insert `[[wikilinks]]` to genuinely related existing notes, **including across categories** (unlike the placement search, which is deliberately category-scoped). Compounds in value as the vault grows. *High leverage, reuses infrastructure already built.*
 - 🟡 **Ingest more than YouTube — more video sources, articles & podcasts.** `yt-dlp` already supports TikTok, Vimeo, X, Instagram, and local files (per claude-video), so more *video* sources are nearly free to enable. Still missing: web articles (non-YouTube URL → fetch + readability) and podcasts/audio (→ transcript, shares the Whisper item above). Make the pipeline source-type-aware so "study anything you read, watch, or listen to" is real.
 - 🟡 **Conversational refinement — `study-notes refine <note> "<instruction>"`.** Shape an existing note in place ("make this more concise", "add a worked example", "expand the 4xx/5xx part") by re-running an extractor on the current note + instruction, non-destructively. Beats hand-editing or re-ingesting; makes the tool feel like a study partner. *Reuses the extractor + vault_write.*

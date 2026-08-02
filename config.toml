@@ -41,7 +41,7 @@ headless = true
 # swap `via` when one stops working (Freedium in particular re-mirrors often).
 [paywall]
 rules = [
-  { hosts = ["medium.com", "towardsdatascience.com", "betterprogramming.pub", "levelup.gitconnected.com"], via = "https://freedium.cfd/{url}" },
+  { hosts = ["medium.com", "towardsdatascience.com", "betterprogramming.pub", "levelup.gitconnected.com"], via = "https://freedium-mirror.cfd/{url}" },
 ]
 # More services you can add to `rules` above (list the hosts you actually hit):
 #   general news → archive.today:  { hosts = ["nytimes.com", "bloomberg.com"], via = "https://archive.ph/newest/{url}" }

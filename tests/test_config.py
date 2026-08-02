@@ -20,7 +20,7 @@ def test_load_config_reads_all_fields():
     assert cfg.frames["budget"] == 4
     assert cfg.whisper_model == "mlx-community/whisper-small"
     assert cfg.browser["profile"]
-    assert cfg.paywall["rules"][0]["via"] == "https://freedium.cfd/{url}"
+    assert cfg.paywall["rules"][0]["via"] == "https://freedium-mirror.cfd/{url}"
     assert "medium.com" in cfg.paywall["rules"][0]["hosts"]
     assert cfg.browser["timeout_ms"] == 30000
 
