@@ -3,8 +3,16 @@ from pathlib import Path
 
 def test_orchestrator_prompt_covers_flow():
     t = Path("prompts/orchestrator.md").read_text().lower()
-    for kw in ["decompose", "extractor", "enricher", "list_categories",
-               "vault_search", "vault_write", "source", "verify"]:
+    for kw in [
+        "decompose",
+        "extractor",
+        "enricher",
+        "list_categories",
+        "vault_search",
+        "vault_write",
+        "source",
+        "verify",
+    ]:
         assert kw in t, kw
 
 
@@ -65,7 +73,43 @@ def test_enrichment_guide_requires_sources():
 
 def test_note_writing_has_montage_flow_and_voice():
     t = Path("prompts/note-writing.md").read_text().lower()
-    assert "montage" in t                 # contact-sheet selection
-    assert "index" in t                   # pick the best index
-    assert "video_id" in t                # keep_frame gets video_id
-    assert "mental picture" in t          # Feynman-plain voice cue
+    assert "montage" in t  # contact-sheet selection
+    assert "index" in t  # pick the best index
+    assert "video_id" in t  # keep_frame gets video_id
+    assert "mental picture" in t  # Feynman-plain voice cue
+
+
+def test_orchestrator_gate_counts_presenter_plus_slides_as_visual():
+    # A presenter who also shows slides must count as visual, not be skipped as a talking-head.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "slides" in t
+    assert "presenter" in t
+    assert "when in doubt" in t  # bias toward treating the source as visual
+
+
+def test_note_writing_backstop_keyed_on_visual_source():
+    # Backstop now fires whenever a video_path was given (source is visual), not only when
+    # separately told the topic is "strongly visual".
+    t = Path("prompts/note-writing.md").read_text().lower()
+    assert "backstop" in t
+    assert "video_path" in t
+
+
+def test_interactive_capture_prompt_overrides_no_ask_and_uses_ask_user():
+    t = Path("prompts/interactive-capture.md").read_text().lower()
+    assert "ask_user" in t
+    assert "override" in t  # overrides orchestrator.md's "do not ask the user"
+    assert "approve" in t  # per-note approval
+
+
+def test_refine_prompt_uses_rewrite_note_and_ask_user():
+    t = Path("prompts/refine.md").read_text().lower()
+    assert "rewrite_note" in t
+    assert "ask_user" in t
+    assert "title" in t  # instructs not to change the title
+
+
+def test_query_prompt_is_grounded_and_cited():
+    t = Path("prompts/query.md").read_text().lower()
+    assert "only" in t  # answer only from provided notes
+    assert "[[" in t  # cite with wikilinks

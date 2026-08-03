@@ -6,11 +6,13 @@ from study_notes.models import Category, Note
 
 RRF_K = 60
 
-_HYBRID_SQL = """
+# {cat} is a static predicate fragment (not user data — the category VALUE stays a
+# bound %(cat)s param), so scoped vs. cross-category share one template.
+_HYBRID_SQL_TMPL = """
 WITH dense AS (
     SELECT path, ROW_NUMBER() OVER (ORDER BY dense_vec <=> %(qvec)s) AS rank
     FROM notes
-    WHERE category = %(cat)s AND dense_vec IS NOT NULL
+    WHERE {cat}dense_vec IS NOT NULL
     ORDER BY dense_vec <=> %(qvec)s
     LIMIT %(k)s
 ),
@@ -20,7 +22,7 @@ lexical AS (
                ORDER BY ts_rank(fts, plainto_tsquery('english', %(q)s)) DESC
            ) AS rank
     FROM notes
-    WHERE category = %(cat)s AND fts @@ plainto_tsquery('english', %(q)s)
+    WHERE {cat}fts @@ plainto_tsquery('english', %(q)s)
     ORDER BY ts_rank(fts, plainto_tsquery('english', %(q)s)) DESC
     LIMIT %(k)s
 )
@@ -34,6 +36,9 @@ WHERE (d.path IS NOT NULL OR l.path IS NOT NULL)
 ORDER BY score DESC
 LIMIT %(k)s;
 """
+
+_HYBRID_SQL = _HYBRID_SQL_TMPL.format(cat="category = %(cat)s AND ")  # category-scoped
+_HYBRID_SQL_ALL = _HYBRID_SQL_TMPL.format(cat="")  # across all categories
 
 
 class VaultIndex:
@@ -76,10 +81,15 @@ class VaultIndex:
                     dense_vec = EXCLUDED.dense_vec;
                 """,
                 {
-                    "path": note.path, "title": note.title, "category": note.category,
-                    "content": note.content, "captured_at": p.captured_at,
-                    "source": p.origin, "source_type": p.input_type,
-                    "source_date": p.source_date, "vec": Vector(vec),
+                    "path": note.path,
+                    "title": note.title,
+                    "category": note.category,
+                    "content": note.content,
+                    "captured_at": p.captured_at,
+                    "source": p.origin,
+                    "source_type": p.input_type,
+                    "source_date": p.source_date,
+                    "vec": Vector(vec),
                 },
             )
         self.conn.commit()
@@ -89,9 +99,25 @@ class VaultIndex:
             cur.execute("SELECT path FROM notes WHERE source = %s ORDER BY path;", (source,))
             return [r[0] for r in cur.fetchall()]
 
-    def find_related(self, query: str, category: str, k: int = 5) -> list[tuple[str, float]]:
+    def find_related(
+        self, query: str, category: str | None = None, k: int = 5
+    ) -> list[tuple[str, float]]:
+        """Hybrid (dense + FTS, RRF-fused) retrieval. category=None searches all categories."""
         qvec = self.embedder.embed([query])[0]
+        params = {"qvec": Vector(qvec), "q": query, "k": k, "rrf": RRF_K}
+        if category is None:
+            sql = _HYBRID_SQL_ALL
+        else:
+            sql = _HYBRID_SQL
+            params["cat"] = category
         with self.conn.cursor() as cur:
-            cur.execute(_HYBRID_SQL,
-                        {"qvec": Vector(qvec), "q": query, "cat": category, "k": k, "rrf": RRF_K})
+            cur.execute(sql, params)
             return [(path, float(score)) for path, score in cur.fetchall()]
+
+    def get_notes(self, paths: list[str]) -> list[tuple[str, str, str]]:
+        """(path, title, content) for the given note paths; missing paths are omitted."""
+        if not paths:
+            return []
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT path, title, content FROM notes WHERE path = ANY(%s);", (paths,))
+            return [(p, t, c) for p, t, c in cur.fetchall()]
