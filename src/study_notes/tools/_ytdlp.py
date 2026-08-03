@@ -5,15 +5,23 @@ a tool runs inside an stdio MCP server, stdout IS the JSON-RPC channel, so any
 such write corrupts the protocol and the tool call hangs. These helpers ensure
 yt-dlp emits nothing to stdout.
 """
+
 import contextlib
 import sys
 
 
 class _QuietLogger:
-    def debug(self, msg): pass
-    def info(self, msg): pass
-    def warning(self, msg): pass
-    def error(self, msg): pass
+    def debug(self, msg):
+        pass
+
+    def info(self, msg):
+        pass
+
+    def warning(self, msg):
+        pass
+
+    def error(self, msg):
+        pass
 
 
 def quiet_opts(opts: dict) -> dict:

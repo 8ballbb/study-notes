@@ -10,10 +10,19 @@ def test_card_defaults():
 
 
 def test_topic_holds_cards_and_provenance():
-    prov = Provenance(origin="https://x", input_type="youtube",
-                      captured_at=date(2026, 7, 26), source_date=date(2025, 11, 14))
-    topic = Topic(title="Raft", tags=["consensus"], summary=["idea one"],
-                  cards=[Card("Q", "A", timestamp="00:14:32")], provenance=prov)
+    prov = Provenance(
+        origin="https://x",
+        input_type="youtube",
+        captured_at=date(2026, 7, 26),
+        source_date=date(2025, 11, 14),
+    )
+    topic = Topic(
+        title="Raft",
+        tags=["consensus"],
+        summary=["idea one"],
+        cards=[Card("Q", "A", timestamp="00:14:32")],
+        provenance=prov,
+    )
     assert topic.cards[0].timestamp == "00:14:32"
     assert topic.provenance.input_type == "youtube"
 
@@ -26,7 +35,8 @@ def test_placement_actions():
 
 
 def test_note_shape():
-    prov = Provenance(origin="f.pdf", input_type="pdf",
-                      captured_at=date(2026, 7, 26), source_date=None)
+    prov = Provenance(
+        origin="f.pdf", input_type="pdf", captured_at=date(2026, 7, 26), source_date=None
+    )
     n = Note(path="a/b.md", title="T", category="Cat", content="# body", provenance=prov)
     assert n.path == "a/b.md"

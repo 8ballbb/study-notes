@@ -12,13 +12,9 @@ from study_notes.tools.youtube import (
 def test_result_from_info_maps_metadata_and_parses_vtt(tmp_path):
     # Simulate what yt-dlp produced: an info dict + a written .en.vtt file.
     vtt = tmp_path / "vid123.en.vtt"
-    vtt.write_text(
-        "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nhello there\n"
-    )
+    vtt.write_text("WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nhello there\n")
     info = {"id": "vid123", "title": "My Talk", "upload_date": "20251114"}
-    result = _result_from_info(
-        url="https://youtu.be/vid123", info=info, vtt_path=vtt
-    )
+    result = _result_from_info(url="https://youtu.be/vid123", info=info, vtt_path=vtt)
     assert isinstance(result, TranscriptResult)
     assert result.video_id == "vid123"
     assert result.title == "My Talk"
@@ -44,13 +40,11 @@ def test_fetch_youtube_transcript_live():
 
 
 def test_pick_vtt_prefers_manual_en_over_auto():
-    from pathlib import Path
-
     from study_notes.tools.youtube import _pick_vtt
 
     cands = [
         Path("/w/vid123.en-orig.vtt"),  # auto
-        Path("/w/vid123.en.vtt"),       # manual, should win
+        Path("/w/vid123.en.vtt"),  # manual, should win
         Path("/w/vid123.en-US.vtt"),
     ]
     assert _pick_vtt(cands, "vid123").name == "vid123.en.vtt"

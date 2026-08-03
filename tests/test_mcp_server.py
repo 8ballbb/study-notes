@@ -6,8 +6,12 @@ def test_server_registers_all_tools():
 
     tool_names = {t.name for t in mcp_server.mcp._tool_manager.list_tools()}
     assert {
-        "fetch_youtube_transcript", "list_categories", "vault_search",
-        "extract_frame", "vault_write", "check_slop",
+        "fetch_youtube_transcript",
+        "list_categories",
+        "vault_search",
+        "extract_frame",
+        "vault_write",
+        "check_slop",
     } <= tool_names
 
 
@@ -41,5 +45,5 @@ def test_validate_write_action_new_note_rejects_target():
 def test_validate_write_action_accepts_valid_combos():
     from study_notes.mcp_server import _validate_write_action
 
-    _validate_write_action("new_note", None)   # no raise
+    _validate_write_action("new_note", None)  # no raise
     _validate_write_action("merge", "a/b.md")  # no raise

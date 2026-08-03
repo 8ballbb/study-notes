@@ -19,9 +19,6 @@ dependencies = [
     "trafilatura>=1.9",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
-
 [project.scripts]
 study-notes = "study_notes.cli:main"
 
@@ -33,6 +30,17 @@ build-backend = "hatchling.build"
 packages = ["src/study_notes"]
 force-include = { "src/study_notes/schema.sql" = "study_notes/schema.sql" }
 
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E702"]  # semicolon-separated setup lines are idiomatic in this test suite
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 asyncio_mode = "auto"
@@ -43,4 +51,14 @@ markers = [
     "docker: requires a running Docker daemon (Colima) for ffmpeg",
     "e2e: runs the real Claude Agent SDK engine (auth + network + DB)",
     "browser: requires a Playwright browser (chromium); run manually",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16",
+    "pre-commit>=4.6.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.12",
+    "types-toml>=0.10",
 ]

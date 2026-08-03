@@ -10,8 +10,9 @@ pytestmark = pytest.mark.integration
 
 
 def _note(path, title, category, content):
-    prov = Provenance(origin="s", input_type="markdown",
-                      captured_at=date(2026, 7, 26), source_date=None)
+    prov = Provenance(
+        origin="s", input_type="markdown", captured_at=date(2026, 7, 26), source_date=None
+    )
     return Note(path=path, title=title, category=category, content=content, provenance=prov)
 
 

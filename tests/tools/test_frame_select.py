@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 
 def _sharp(tmp: Path, name: str, seed: int) -> Path:
@@ -14,6 +14,7 @@ def _sharp(tmp: Path, name: str, seed: int) -> Path:
 
 def _blurred(tmp: Path, name: str, seed: int) -> Path:
     from PIL import ImageFilter
+
     rng = np.random.default_rng(seed)
     arr = (rng.integers(0, 256, size=(64, 64, 3))).astype("uint8")
     p = tmp / name
@@ -23,6 +24,7 @@ def _blurred(tmp: Path, name: str, seed: int) -> Path:
 
 def test_laplacian_variance_sharp_beats_blurred(tmp_path):
     from study_notes.tools.frame_select import laplacian_variance
+
     sharp = laplacian_variance(Image.open(_sharp(tmp_path, "s.png", 1)))
     blur = laplacian_variance(Image.open(_blurred(tmp_path, "b.png", 1)))
     assert sharp > blur
@@ -30,12 +32,14 @@ def test_laplacian_variance_sharp_beats_blurred(tmp_path):
 
 def test_dhash_identical_zero_distance(tmp_path):
     from study_notes.tools.frame_select import dhash, hamming
+
     a = Image.open(_sharp(tmp_path, "a.png", 7))
     assert hamming(dhash(a), dhash(a.copy())) == 0
 
 
 def test_dhash_distinct_images_have_distance(tmp_path):
     from study_notes.tools.frame_select import dhash, hamming
+
     a = dhash(Image.open(_sharp(tmp_path, "a.png", 1)))
     b = dhash(Image.open(_sharp(tmp_path, "b.png", 2)))
     assert hamming(a, b) > 10
@@ -43,6 +47,7 @@ def test_dhash_distinct_images_have_distance(tmp_path):
 
 def test_refine_drops_blurry_and_dedups_keeping_last(tmp_path):
     from study_notes.tools.frame_select import refine_candidates
+
     sharp1 = _sharp(tmp_path, "t1.png", 1)
     # near-duplicate of sharp1 (same seed, tiny brightness shift) at a later ts
     dup = _sharp(tmp_path, "t2.png", 1)
@@ -56,25 +61,31 @@ def test_refine_drops_blurry_and_dedups_keeping_last(tmp_path):
     ]
     out = refine_candidates(cands, budget=10)
     stamps = [c["timestamp"] for c in out]
-    assert "00:00:03" not in stamps          # blurry dropped
-    assert "00:00:01" not in stamps          # dedup kept the LAST of the run
+    assert "00:00:03" not in stamps  # blurry dropped
+    assert "00:00:01" not in stamps  # dedup kept the LAST of the run
     assert "00:00:02" in stamps and "00:00:05" in stamps
 
 
 def test_refine_respects_budget(tmp_path):
     from study_notes.tools.frame_select import refine_candidates
-    cands = [{"path": _sharp(tmp_path, f"f{i}.png", i), "timestamp": f"00:00:0{i}"}
-             for i in range(1, 6)]
+
+    cands = [
+        {"path": _sharp(tmp_path, f"f{i}.png", i), "timestamp": f"00:00:0{i}"} for i in range(1, 6)
+    ]
     out = refine_candidates(cands, budget=2)
     assert len(out) == 2
 
 
 def test_build_montage_creates_image_with_cells(tmp_path):
     from study_notes.tools.frame_select import build_montage
-    cands = [{"path": _sharp(tmp_path, f"m{i}.png", i), "timestamp": f"00:00:0{i}",
-              "index": i} for i in range(3)]
+
+    cands = [
+        {"path": _sharp(tmp_path, f"m{i}.png", i), "timestamp": f"00:00:0{i}", "index": i}
+        for i in range(3)
+    ]
     out = build_montage(cands, tmp_path / "montage.jpg", cols=2)
     assert out.exists()
     from PIL import Image
+
     w, h = Image.open(out).size
     assert w > 0 and h > 0

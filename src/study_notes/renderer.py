@@ -51,13 +51,10 @@ def _frontmatter(topic: Topic, category: str) -> str:
 
 def _cards_block(topic: Topic, frame_paths: dict[int, str] | None) -> str:
     frame_paths = frame_paths or {}
-    return "\n\n".join(
-        render_card(card, frame_paths.get(i)) for i, card in enumerate(topic.cards)
-    )
+    return "\n\n".join(render_card(card, frame_paths.get(i)) for i, card in enumerate(topic.cards))
 
 
-def render_note(topic: Topic, category: str,
-                frame_paths: dict[int, str] | None = None) -> str:
+def render_note(topic: Topic, category: str, frame_paths: dict[int, str] | None = None) -> str:
     ideas = "\n".join(f"- {line}" for line in topic.summary)
     return (
         f"{_frontmatter(topic, category)}\n\n"
@@ -66,10 +63,6 @@ def render_note(topic: Topic, category: str,
     )
 
 
-def render_update_section(topic: Topic, on: date,
-                          frame_paths: dict[int, str] | None = None) -> str:
+def render_update_section(topic: Topic, on: date, frame_paths: dict[int, str] | None = None) -> str:
     ideas = "\n".join(f"- {line}" for line in topic.summary)
-    return (
-        f"## Update ({on.isoformat()})\n{ideas}\n\n"
-        f"{_cards_block(topic, frame_paths)}\n"
-    )
+    return f"## Update ({on.isoformat()})\n{ideas}\n\n{_cards_block(topic, frame_paths)}\n"

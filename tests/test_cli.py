@@ -2,8 +2,7 @@ from study_notes.cli import parse_args
 
 
 def test_parse_add_with_flags():
-    ns = parse_args(["add", "https://youtu.be/x", "--category", "Web APIs",
-                     "--dry-run", "--force"])
+    ns = parse_args(["add", "https://youtu.be/x", "--category", "Web APIs", "--dry-run", "--force"])
     assert ns.command == "add"
     assert ns.input == "https://youtu.be/x"
     assert ns.category == "Web APIs"

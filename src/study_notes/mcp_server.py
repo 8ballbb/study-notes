@@ -35,8 +35,7 @@ def build_context(config: Config) -> Context:
     from study_notes.embedding import BGEM3Embedder
     from study_notes.vault_index import VaultIndex
 
-    index = VaultIndex(connect(config.database_url),
-                       BGEM3Embedder(config.embedding_model))
+    index = VaultIndex(connect(config.database_url), BGEM3Embedder(config.embedding_model))
     return Context(config=config, writer=VaultWriter(config, index))
 
 
@@ -53,7 +52,9 @@ def fetch_youtube_transcript(url: str) -> dict:
     """Fetch a YouTube video's English transcript with timestamps and metadata."""
     r = youtube.fetch_youtube_transcript(url)
     return {
-        "url": r.url, "video_id": r.video_id, "title": r.title,
+        "url": r.url,
+        "video_id": r.video_id,
+        "title": r.title,
         "upload_date": r.upload_date,
         "segments": [{"start": s.start, "text": s.text} for s in r.segments],
     }
@@ -93,9 +94,17 @@ def extract_frame(video_url: str, timestamp: str, prefix: str) -> dict:
 
 
 @mcp.tool()
-def vault_write(title: str, category: str, summary: list[str], cards: list[dict],
-                source: str, source_type: str, source_date: str | None,
-                action: str = "new_note", target_note: str | None = None) -> dict:
+def vault_write(
+    title: str,
+    category: str,
+    summary: list[str],
+    cards: list[dict],
+    source: str,
+    source_type: str,
+    source_date: str | None,
+    action: str = "new_note",
+    target_note: str | None = None,
+) -> dict:
     """Write a study note non-destructively. action: 'new_note' or 'merge' (into target_note).
 
     On merge, the note's category is taken from `target_note`'s location; the
@@ -105,18 +114,29 @@ def vault_write(title: str, category: str, summary: list[str], cards: list[dict]
     from study_notes.models import Card, Provenance, Topic
 
     prov = Provenance(
-        origin=source, input_type=source_type, captured_at=date.today(),
+        origin=source,
+        input_type=source_type,
+        captured_at=date.today(),
         source_date=date.fromisoformat(source_date) if source_date else None,
     )
     topic = Topic(
-        title=title, tags=[], summary=summary,
-        cards=[Card(question=c["question"], answer=c["answer"],
-                    cloze=c.get("cloze", False), timestamp=c.get("timestamp"))
-               for c in cards],
+        title=title,
+        tags=[],
+        summary=summary,
+        cards=[
+            Card(
+                question=c["question"],
+                answer=c["answer"],
+                cloze=c.get("cloze", False),
+                timestamp=c.get("timestamp"),
+            )
+            for c in cards
+        ],
         provenance=prov,
     )
     w = _context().writer
     if action == "merge":
+        assert target_note is not None  # guaranteed by _validate_write_action
         path = w.write_merge(target_note, topic, on=date.today())
     else:
         path = w.write_new(topic, category=category)

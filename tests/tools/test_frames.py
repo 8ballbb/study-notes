@@ -16,9 +16,7 @@ def test_frame_filename_slugifies_timestamp():
     assert frame_filename("raft", "00:14:32") == "raft_00-14-32.jpg"
 
 
-needs_docker = pytest.mark.skipif(
-    shutil.which("docker") is None, reason="docker not installed"
-)
+needs_docker = pytest.mark.skipif(shutil.which("docker") is None, reason="docker not installed")
 
 
 @pytest.fixture
@@ -32,10 +30,17 @@ def work_dir():
 
 @pytest.fixture
 def sample_video(work_dir):
-    _docker_ffmpeg(work_dir, [
-        "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=10",
-        "/work/sample.mp4", "-y",
-    ])
+    _docker_ffmpeg(
+        work_dir,
+        [
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=2:size=320x240:rate=10",
+            "/work/sample.mp4",
+            "-y",
+        ],
+    )
     return work_dir / "sample.mp4"
 
 

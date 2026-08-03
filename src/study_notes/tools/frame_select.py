@@ -1,11 +1,12 @@
 """Local, key-free image refinement for keyframe candidates (numpy + Pillow)."""
+
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-BLUR_FLOOR = 100.0   # variance-of-Laplacian below this = blur/transition
-DUP_DISTANCE = 10    # dHash (64-bit) Hamming distance below this = near-duplicate
+BLUR_FLOOR = 100.0  # variance-of-Laplacian below this = blur/transition
+DUP_DISTANCE = 10  # dHash (64-bit) Hamming distance below this = near-duplicate
 MONTAGE_COLS = 3
 
 _THUMB = 256
@@ -15,8 +16,7 @@ def laplacian_variance(img: Image.Image) -> float:
     a = np.asarray(img.convert("L"), dtype=np.float64)
     if a.shape[0] < 3 or a.shape[1] < 3:
         return 0.0
-    lap = (-4 * a[1:-1, 1:-1] + a[:-2, 1:-1] + a[2:, 1:-1]
-           + a[1:-1, :-2] + a[1:-1, 2:])
+    lap = -4 * a[1:-1, 1:-1] + a[:-2, 1:-1] + a[2:, 1:-1] + a[1:-1, :-2] + a[1:-1, 2:]
     return float(lap.var())
 
 
@@ -57,7 +57,7 @@ def refine_candidates(candidates: list[dict], budget: int) -> list[dict]:
         sharp = [max(scored, key=lambda c: c["sharp"])]
     sharp.sort(key=lambda c: c["timestamp"])
     # Settled dedup: collapse consecutive near-duplicate runs, keep the LAST (settled).
-    deduped = []
+    deduped: list[dict] = []
     for c in sharp:
         if deduped and hamming(deduped[-1]["hash"], c["hash"]) < DUP_DISTANCE:
             deduped[-1] = c  # keep the later, settled frame of the run
@@ -67,24 +67,26 @@ def refine_candidates(candidates: list[dict], budget: int) -> list[dict]:
     if budget > 0 and len(deduped) > budget:
         chosen = [max(deduped, key=lambda c: c["sharp"])]
         while len(chosen) < budget:
-            nxt = max((c for c in deduped if c not in chosen),
-                      key=lambda c: min(hamming(c["hash"], s["hash"]) for s in chosen))
+            nxt = max(
+                (c for c in deduped if c not in chosen),
+                key=lambda c: min(hamming(c["hash"], s["hash"]) for s in chosen),
+            )
             chosen.append(nxt)
         deduped = sorted(chosen, key=lambda c: c["timestamp"])
     return [{"path": c["path"], "timestamp": c["timestamp"]} for c in deduped]
 
 
-def build_montage(candidates: list[dict], out_path: Path,
-                  cols: int = MONTAGE_COLS) -> Path:
+def build_montage(candidates: list[dict], out_path: Path, cols: int = MONTAGE_COLS) -> Path:
     thumbs = []
     for c in candidates:
-        with Image.open(c["path"]) as im:
-            im = im.convert("RGB")
+        with Image.open(c["path"]) as src:
+            im = src.convert("RGB")
             im.thumbnail((_THUMB, _THUMB))
             cell = Image.new("RGB", (_THUMB, _THUMB + 18), (20, 20, 20))
             cell.paste(im, ((_THUMB - im.width) // 2, 0))
             ImageDraw.Draw(cell).text(
-                (4, _THUMB + 3), f"[{c['index']}] {c['timestamp']}", fill=(255, 255, 255))
+                (4, _THUMB + 3), f"[{c['index']}] {c['timestamp']}", fill=(255, 255, 255)
+            )
             thumbs.append(cell)
     if not thumbs:
         Image.new("RGB", (_THUMB, _THUMB), (20, 20, 20)).save(out_path)

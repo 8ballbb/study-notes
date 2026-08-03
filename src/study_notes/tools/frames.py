@@ -29,10 +29,21 @@ def extract_frame(video_path: Path, timestamp: str, out_path: Path) -> Path:
             "video_path and out_path must share a directory (single Docker mount)"
         )
     work = video_path.parent
-    proc = _docker_ffmpeg(work, [
-        "-ss", timestamp, "-i", f"/work/{video_path.name}",
-        "-frames:v", "1", "-q:v", "2", f"/work/{out_path.name}", "-y",
-    ])
+    proc = _docker_ffmpeg(
+        work,
+        [
+            "-ss",
+            timestamp,
+            "-i",
+            f"/work/{video_path.name}",
+            "-frames:v",
+            "1",
+            "-q:v",
+            "2",
+            f"/work/{out_path.name}",
+            "-y",
+        ],
+    )
     if proc.returncode != 0 or not out_path.exists():
         raise FrameExtractionError(
             f"ffmpeg failed for {video_path} @ {timestamp}: "
@@ -47,12 +58,14 @@ def download_video(url: str, out_dir: Path) -> Path:
     from study_notes.tools._ytdlp import quiet_opts, stdout_to_stderr
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    opts = quiet_opts({
-        # Single progressive mp4 stream (no ffmpeg merge step). Cap at 480p: frames are
-        # downscaled to 512px anyway, so taller streams are wasted download time/bytes.
-        "format": "best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/mp4/best",
-        "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
-    })
+    opts = quiet_opts(
+        {
+            # Single progressive mp4 stream (no ffmpeg merge step). Cap at 480p: frames are
+            # downscaled to 512px anyway, so taller streams are wasted download time/bytes.
+            "format": "best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/mp4/best",
+            "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
+        }
+    )
     with stdout_to_stderr(), yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     matches = sorted(out_dir.glob(f"{info.get('id', '')}*"))
@@ -74,30 +87,48 @@ def _ts_secs(hhmmss: str) -> int:
     return h * 3600 + m * 60 + s
 
 
-def select_keyframes(video_path: Path, start: str, end: str, budget: int,
-                     out_dir: Path) -> dict:
+def select_keyframes(video_path: Path, start: str, end: str, budget: int, out_dir: Path) -> dict:
     """Phase 1: visually-distinct candidate frames (mpdecimate), window-scoped, budget-capped."""
     out_dir.mkdir(parents=True, exist_ok=True)
     if out_dir.parent.resolve() != video_path.parent.resolve():
         raise FrameExtractionError(
-            "out_dir must be a direct subdirectory of the video's directory (single Docker mount)")
+            "out_dir must be a direct subdirectory of the video's directory (single Docker mount)"
+        )
     work = video_path.parent
     rel = out_dir.name
     start_s = _ts_secs(start)
     dur = max(0, _ts_secs(end) - start_s)
-    proc = _docker_ffmpeg(work, [
-        "-ss", start, "-t", str(dur), "-i", f"/work/{video_path.name}",
-        "-vf", "mpdecimate,scale=512:-1,showinfo", "-vsync", "vfr", "-q:v", "3",
-        f"/work/{rel}/cand_%03d.jpg", "-y",
-    ])
+    proc = _docker_ffmpeg(
+        work,
+        [
+            "-ss",
+            start,
+            "-t",
+            str(dur),
+            "-i",
+            f"/work/{video_path.name}",
+            "-vf",
+            "mpdecimate,scale=512:-1,showinfo",
+            "-vsync",
+            "vfr",
+            "-q:v",
+            "3",
+            f"/work/{rel}/cand_%03d.jpg",
+            "-y",
+        ],
+    )
     if proc.returncode != 0:
         raise FrameExtractionError(
-            f"select_keyframes failed: {proc.stderr.decode(errors='replace')[-300:]}")
-    times = [float(t) for t in re.findall(r"pts_time:([0-9.]+)",
-                                          proc.stderr.decode(errors="replace"))]
+            f"select_keyframes failed: {proc.stderr.decode(errors='replace')[-300:]}"
+        )
+    times = [
+        float(t) for t in re.findall(r"pts_time:([0-9.]+)", proc.stderr.decode(errors="replace"))
+    ]
     frames = sorted(out_dir.glob("cand_*.jpg"))
-    cands = [{"path": p, "timestamp": _fmt_ts(start_s + (times[i] if i < len(times) else 0.0))}
-             for i, p in enumerate(frames)]
+    cands = [
+        {"path": p, "timestamp": _fmt_ts(start_s + (times[i] if i < len(times) else 0.0))}
+        for i, p in enumerate(frames)
+    ]
     refined = frame_select.refine_candidates(cands, budget)
     for i, c in enumerate(refined):
         c["index"] = i
@@ -106,8 +137,9 @@ def select_keyframes(video_path: Path, start: str, end: str, budget: int,
     return {"candidates": refined, "montage_path": montage_path}
 
 
-def keep_frame(candidate_path: Path, prefix: str, timestamp: str,
-               video_id: str, frames_dir: Path) -> str:
+def keep_frame(
+    candidate_path: Path, prefix: str, timestamp: str, video_id: str, frames_dir: Path
+) -> str:
     from PIL import Image
 
     target_dir = frames_dir / video_id
@@ -120,7 +152,10 @@ def keep_frame(candidate_path: Path, prefix: str, timestamp: str,
         for existing in sorted(target_dir.glob("*.jpg")):
             with Image.open(existing) as ex:
                 ex.load()
-                if frame_select.hamming(new_hash, frame_select.dhash(ex)) < frame_select.DUP_DISTANCE:
+                if (
+                    frame_select.hamming(new_hash, frame_select.dhash(ex))
+                    < frame_select.DUP_DISTANCE
+                ):
                     return existing.name
     except Exception:
         pass  # hash failure must never lose a frame — fall through and keep it

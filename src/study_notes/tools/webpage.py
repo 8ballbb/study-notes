@@ -102,9 +102,7 @@ def browser_login(profile_dir: str, url: str | None = None) -> None:
 
     try:
         with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                expanded_profile_dir, headless=False
-            )
+            context = p.chromium.launch_persistent_context(expanded_profile_dir, headless=False)
             try:
                 page = context.pages[0] if context.pages else context.new_page()
                 if url:
@@ -121,7 +119,11 @@ def browser_login(profile_dir: str, url: str | None = None) -> None:
 
 
 async def fetch_webpage(
-    url: str, *, profile_dir: str, timeout_ms: int, headless: bool = True,
+    url: str,
+    *,
+    profile_dir: str,
+    timeout_ms: int,
+    headless: bool = True,
     paywall_rules=(),
 ) -> WebpageResult:
     """Render `url` in a persistent Chromium profile and extract readable text.
