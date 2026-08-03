@@ -296,7 +296,7 @@ A single `config.toml` plus a PostgreSQL connection. No LLM secrets — the tool
 Code auth.
 
 ```toml
-vault_path = "/Users/andrewpoole/vault"
+vault_path = "/Users/you/vault"   # absolute, under $HOME
 notes_root = "04 - Resources"      # categories are folders under here
 attachments_dir = "06 - Attachments"
 frames_subdir = "frames"

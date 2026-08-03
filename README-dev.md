@@ -1,13 +1,15 @@
 # Dev setup
 
-## PostgreSQL + pgvector (Docker via Colima)
+## PostgreSQL + pgvector (Docker via a lima-based daemon)
 
 The database runs in a container defined by `docker-compose.yml`
-(`pgvector/pgvector:pg17` — Postgres 17 with pgvector preinstalled). On a Mac
-without Docker Desktop, use Colima as the runtime:
+(`pgvector/pgvector:pg17` — Postgres 17 with pgvector preinstalled). Any Docker
+daemon that bind-mounts `$HOME` works — **Colima** or **Rancher Desktop** (Docker
+Desktop too, with `$HOME` file-sharing enabled). If you have none yet, Colima is
+the simplest:
 
     brew install colima docker docker-compose
-    colima start
+    colima start                  # or just launch Rancher Desktop instead
     docker compose up -d          # starts Postgres + pgvector
 
 This creates two databases: `study_notes` (main) and `study_notes_test` (tests,
@@ -33,8 +35,8 @@ ffmpeg runs in a throwaway container (no host install). Pre-pull the image:
 
     docker pull jrottenberg/ffmpeg:6.1-alpine
 
-Because Colima only mounts your home directory, frame I/O must live under
-`$HOME` (the vault frames dir does). Tests that touch ffmpeg are marked
+Because the Docker VM (Colima/Rancher Desktop) only mounts your home directory,
+frame I/O must live under `$HOME` (the vault frames dir does). Tests that touch ffmpeg are marked
 `docker` and use a work dir under the repo.
 
 ## MCP server (for Claude Code)

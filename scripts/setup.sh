@@ -24,9 +24,9 @@ fi
 cat <<'PLAN'
 study-notes setup will do the following, skipping anything already present:
 
-  1. brew install (as needed): uv, colima, docker, docker-compose
-  2. colima start                             (Docker runtime — no Docker Desktop)
-  3. uv venv + uv pip install -e ".[dev]"     (Python app + dev deps)
+  1. brew install (as needed): uv, docker, docker-compose (+ colima only if no daemon)
+  2. ensure a Docker daemon is up               (Colima or Rancher Desktop; else start Colima)
+  3. uv sync --group dev                       (Python app + dev deps)
   4. docker compose up -d                     (Postgres 17 + pgvector)
   5. docker pull jrottenberg/ffmpeg:6.1-alpine (video frame extraction)
   6. uv run playwright install chromium       (webpage ingestion — a few hundred MB)
@@ -40,7 +40,7 @@ case "${reply:-}" in [yY]|[yY][eE][sS]) ;; *) echo "Aborted — nothing was chan
 
 # --- 1. Homebrew packages ---
 say "Homebrew packages"
-for pkg in uv colima docker docker-compose; do
+for pkg in uv docker docker-compose; do
   if have "$pkg" || brew list "$pkg" >/dev/null 2>&1; then
     echo "  ok: $pkg"
   else
@@ -48,14 +48,19 @@ for pkg in uv colima docker docker-compose; do
   fi
 done
 
-# --- 2. Colima (Docker runtime) ---
-say "Docker runtime (Colima)"
-if colima status 2>&1 | grep -qi running; then echo "  colima already running"; else echo "  starting colima…"; colima start; fi
+# --- 2. Docker runtime (any lima-based daemon: Colima or Rancher Desktop) ---
+say "Docker runtime"
+if docker info >/dev/null 2>&1; then
+  echo "  ok: a Docker daemon is already running (context: $(docker context show 2>/dev/null || echo default))"
+else
+  echo "  no Docker daemon reachable — installing & starting Colima (default runtime)…"
+  have colima || brew install colima
+  colima start
+fi
 
 # --- 3. Python app + dev deps ---
 say "Python dependencies"
-[ -d .venv ] || uv venv
-uv pip install -e ".[dev]"
+uv sync --group dev
 
 # --- 4/5. Database + ffmpeg image ---
 say "Database + ffmpeg image"
@@ -77,13 +82,14 @@ if [ ! -f config.toml ]; then
 else
   vault="$(sed -nE 's/^[[:space:]]*vault_path[[:space:]]*=[[:space:]]*"?([^"]*)"?.*/\1/p' config.toml | head -1)"
   vault="${vault/#\~/$HOME}"
-  if [ -z "$vault" ]; then
-    echo "  set vault_path in config.toml (a folder under \$HOME)."
+  if [ -z "$vault" ] || [ "$vault" = "REPLACE_ME" ]; then
+    echo "  vault_path is still the REPLACE_ME placeholder — edit config.toml and set it to your"
+    echo "  Obsidian vault (an absolute path under \$HOME). Skipping vault creation."
   elif [ -d "$vault" ]; then
     echo "  vault ok: $vault"
   else
     echo "  creating vault folder: $vault"
-    mkdir -p "$vault"
+    mkdir -p "$vault/Notes"
     echo "  (if your Obsidian vault lives elsewhere, edit vault_path in config.toml to point at it.)"
   fi
 fi

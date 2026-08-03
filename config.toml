@@ -1,4 +1,6 @@
-vault_path = "/Users/andrewpoole/vault"
+# Set this to the absolute path of YOUR Obsidian vault before first run.
+# It MUST be under $HOME (the Docker VM only bind-mounts $HOME).
+vault_path = "REPLACE_ME"
 notes_root = "Notes"
 attachments_dir = "Attachments"
 frames_subdir = "frames"

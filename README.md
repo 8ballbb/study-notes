@@ -95,7 +95,7 @@ The orchestrator keeps a lean context and delegates the bulky per-topic work to 
 - **macOS on Apple Silicon** (the BGE-M3 embedding model uses Apple's MPS/GPU).
 - **Python 3.12+** and [`uv`](https://docs.astral.sh/uv/).
 - **[Claude Code](https://claude.com/claude-code)**, installed and authenticated — the agent run rides that auth (no API key needed).
-- **Docker** (via [Colima](https://github.com/abiosoft/colima) — no Docker Desktop required) for PostgreSQL + `pgvector` and for `ffmpeg`.
+- **Docker**, served by a lima-based daemon that bind-mounts `$HOME` — [Colima](https://github.com/abiosoft/colima) or [Rancher Desktop](https://rancherdesktop.io/) both work (Docker Desktop works too if `$HOME` file-sharing is enabled). Used for PostgreSQL + `pgvector` and for `ffmpeg`.
 
 ## Setup
 
@@ -106,7 +106,7 @@ git clone https://github.com/8ballbb/study-notes && cd study-notes
 ./scripts/doctor.sh
 ```
 
-**Then set it all up with one command** — it prints its plan, asks once, then installs/starts only what's missing (Homebrew deps, Colima, the database + ffmpeg image, Python deps, Chromium) and finishes by re-running the doctor:
+**Then set it all up with one command** — it prints its plan, asks once, then installs/starts only what's missing (Homebrew deps, a Docker daemon — reusing Colima/Rancher Desktop if already running — the database + ffmpeg image, Python deps, Chromium) and finishes by re-running the doctor:
 
 ```bash
 make setup          # or: ./scripts/setup.sh
@@ -115,20 +115,22 @@ make setup          # or: ./scripts/setup.sh
 <details><summary>Or do it by hand (what <code>make setup</code> runs)</summary>
 
 ```bash
-# 1. Docker runtime (no Docker Desktop needed) + the database + the ffmpeg image
-brew install colima docker docker-compose
-colima start
+# 1. Docker runtime — any lima-based daemon that bind-mounts $HOME.
+#    If Rancher Desktop (or Colima) is already running, skip the next two lines.
+brew install colima docker docker-compose     # only if you have no Docker daemon yet
+colima start                                   # or just launch Rancher Desktop instead
 docker compose up -d                          # Postgres 17 + pgvector (container: study_notes_db)
 docker pull jrottenberg/ffmpeg:6.1-alpine     # frame extraction
 
 # 2. The Python tool
-uv venv && uv pip install -e ".[dev]"
+uv sync --group dev
 uv run playwright install chromium            # for webpage ingestion (JS-heavy pages, screenshots)
 
-# 3. Point config.toml at your Obsidian vault — a folder UNDER your home directory
-#    (Colima only bind-mounts $HOME, so the vault must live there)
+# 3. Point config.toml at your Obsidian vault. The tracked config.toml ships with
+#    vault_path = "REPLACE_ME" — set it to an ABSOLUTE path UNDER $HOME (the Docker VM
+#    only bind-mounts $HOME, and the app does NOT expand ~).
 mkdir -p "$HOME/vault"                         # then set in config.toml:
-#    vault_path = "/Users/you/vault"
+#    vault_path = "/Users/you/vault"           # <- your real home dir, not the literal "you"
 
 # 4. Verify — should be all [ok]
 ./scripts/doctor.sh
@@ -171,10 +173,10 @@ uv run study-notes reindex
 
 ## Configuration
 
-`config.toml` at the repo root:
+`config.toml` at the repo root. It is tracked in git and ships with `vault_path = "REPLACE_ME"` — you **must** edit that to an absolute path under `$HOME` before the first run (the app does not expand `~`, and the doctor/setup will refuse to proceed while it is still the placeholder). Your local edit is expected to show as an uncommitted change; don't commit your machine-specific path back.
 
 ```toml
-vault_path = "/Users/you/vault"
+vault_path = "/Users/you/vault"        # absolute, under $HOME (edit the shipped REPLACE_ME)
 notes_root = "Notes"                   # categories are folders under here
 attachments_dir = "Attachments"
 frames_subdir = "frames"
@@ -249,7 +251,7 @@ The design and build history live under [`docs/superpowers/`](docs/superpowers/)
 
 ```bash
 uv run pytest -m "not slow and not docker and not e2e"   # fast, token-free suite (~3.5s)
-uv run pytest -m docker                                   # frame tests (needs Colima + ffmpeg image)
+uv run pytest -m docker                                   # frame tests (needs a Docker daemon + ffmpeg image)
 uv run pytest -m e2e                                      # real end-to-end agentic run — SPENDS Claude tokens
 ```
 

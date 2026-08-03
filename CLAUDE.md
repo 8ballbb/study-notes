@@ -28,7 +28,7 @@ uv run study-notes login <url>                            # one-time login for a
 uv run study-notes reindex                               # rebuild search index + category MOCs from disk
 
 uv run pytest -m "not slow and not docker and not e2e"   # fast, TOKEN-FREE suite (~3.5s) — use this
-uv run pytest -m docker                                  # frame tests (needs Colima + jrottenberg/ffmpeg:6.1-alpine)
+uv run pytest -m docker                                  # frame tests (needs a Docker daemon + jrottenberg/ffmpeg:6.1-alpine)
 uv run pytest -m e2e                                     # live agentic ingest — SLOW + SPENDS CLAUDE TOKENS
 ```
 
@@ -40,17 +40,26 @@ It is bundled in the suite unless you exclude it — always add `and not e2e` fo
 - **Ask before running tests or any long agentic run.** The pytest suite (with the e2e) and any
   real ingest cost time and Claude tokens — make the change, say exactly what you'd verify, then
   ask. Reading files, web research, and non-test shell commands are fine without asking.
-- **Prefer Docker for services.** Run Postgres/infra in Docker (Colima on macOS), never a host
-  install — see `docker-compose.yml` (pinned images). The user interrupted a host `brew install
-  postgresql` to insist on this.
+- **Check `config.toml` for unset placeholders before any run.** The tracked `config.toml` ships
+  with placeholders (currently `vault_path = "REPLACE_ME"`). Before an ingest or any run, verify
+  they've been replaced; if `vault_path` is still `REPLACE_ME`, stop, tell the user, and offer to
+  update `config.toml` with the real absolute vault path (must be under `$HOME`). Never run against a
+  placeholder, and never commit a machine-specific path back.
+- **Prefer Docker for services.** Run Postgres/infra in Docker, never a host install — see
+  `docker-compose.yml` (pinned images). The user interrupted a host `brew install postgresql` to
+  insist on this. (Runtime is any lima-based Docker daemon — see Infra.)
 - **Follow the superpowers workflow** for non-trivial changes (see Process below), and **branch
   before implementing** — don't build directly on `master`.
 - Prose/notes voice is **Feynman-plain**; keep it (see `prompts/note-writing.md`).
 
 ## Infra
-- **Docker via Colima** (not Docker Desktop). Postgres 17 + pgvector (`docker compose up -d`) and
-  ffmpeg run in containers; the Python app runs on the **host** because BGE-M3 and mlx-whisper need
-  Apple **MPS**. Colima only bind-mounts under `$HOME`, so ffmpeg I/O must stay under home.
+- **Docker runtime.** Requirement: *a Docker daemon backed by a Linux VM that bind-mounts `$HOME`*
+  (so Postgres/ffmpeg run in containers, not on the host, and container I/O under `$HOME` works). Any
+  of these satisfy it on macOS: **Colima**, **Rancher Desktop** (both lima-based, bind-mount `$HOME`
+  by default), or Docker Desktop with `$HOME` file-sharing enabled. Postgres 17 + pgvector
+  (`docker compose up -d`) and ffmpeg run in containers; the Python app runs on the **host** because
+  BGE-M3 and mlx-whisper need Apple **MPS**. Because the VM only bind-mounts `$HOME`, all container
+  I/O (ffmpeg, the vault) must stay under home.
 - **No API keys** — the agent run rides the user's Claude Code auth.
 
 ## Architecture map
@@ -88,15 +97,6 @@ This project is built with the **superpowers** workflow: brainstorm → spec →
 implementation (TDD, per-task review, final whole-branch review) → finish. Follow it for non-trivial
 changes; keep specs/plans under `docs/superpowers/`.
 
-## Known issues
-- **Intermittent teardown error on agentic runs.** A run occasionally ends with
-  `EngineError`/`error: Claude Code returned an error result: success` — the SDK reformatting a
-  non-zero CLI-subprocess exit at teardown, even when the work substantively completed. It's
-  transient: **re-running usually succeeds** (a failed *real* ingest is not recorded in the ingest
-  log, so a retry proceeds fresh). Candidate hardening (not yet done): in `run_ingest`, treat that
-  specific `ProcessError` as success when a terminal success `ResultMessage` was already observed,
-  or auto-retry once.
-
 ## New machine / resuming (self-checking onboarding)
 Claude Code's per-project **auto-memory** (`~/.claude/projects/<path>/memory/`) is machine-local and
 does **not** travel with the repo — this `CLAUDE.md`, the `README`, `docs/superpowers/` (design
@@ -105,9 +105,10 @@ specs + plans), `scripts/doctor.sh`, and git history are what port. On a fresh c
 1. Read this file, then `README.md` (setup) and `README-dev.md` (test matrix); skim
    `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design rationale.
 2. **Run `./scripts/doctor.sh`** — a read-only check of every prerequisite and service (Homebrew,
-   uv, Colima, the Docker daemon, the `study_notes_db` Postgres container, the ffmpeg image, the
-   Python deps including Playwright/trafilatura, the optional Chromium browser install, and
-   `config.toml`'s `vault_path`). It prints the exact fix for each gap and changes nothing.
+   uv, the Docker daemon — any lima-based runtime, Colima or Rancher Desktop — the `study_notes_db`
+   Postgres container, the ffmpeg image, the Python deps including Playwright/trafilatura, the
+   optional Chromium browser install, and `config.toml`'s `vault_path`, including a check that it
+   isn't still the `REPLACE_ME` placeholder). It prints the exact fix for each gap and changes nothing.
 3. **For each `[MISS]` item: tell the user what's missing and the suggested fix, and ASK PERMISSION
    before installing or starting anything** (per Working preferences — never install/start infra
    unprompted). Either run the approved fixes yourself, or point them at **`make setup`**
