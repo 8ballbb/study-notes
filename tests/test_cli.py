@@ -14,6 +14,21 @@ def test_parse_reindex():
     assert ns.command == "reindex"
 
 
+def test_parse_link():
+    ns = parse_args(["link"])
+    assert ns.command == "link"
+
+
+def test_parse_add_only():
+    ns = parse_args(["add", "https://youtu.be/x", "--only", "the part about backpressure"])
+    assert ns.only == "the part about backpressure"
+
+
+def test_parse_add_only_defaults_none():
+    ns = parse_args(["add", "https://youtu.be/x"])
+    assert ns.only is None
+
+
 def test_parse_login_with_url():
     ns = parse_args(["login", "https://x.com"])
     assert ns.command == "login"

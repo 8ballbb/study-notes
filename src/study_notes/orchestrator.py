@@ -35,7 +35,7 @@ def resolve_source(raw: str) -> tuple[str, str, str]:
     raise UnsupportedSourceError("not a YouTube URL, an http(s) URL, or an existing file: " + raw)
 
 
-def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str:
+def _input_prompt(origin: str, source_type: str, category, note, dry_run, only=None) -> str:
     lines = [
         f"Ingest this {source_type} source into the vault following your procedure.",
         f"Source: {origin}",
@@ -45,6 +45,12 @@ def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str
         lines.append(f"Directive: force category = {category!r}.")
     if note:
         lines.append(f"Directive: merge into target_note = {note!r}.")
+    if only:
+        lines.append(
+            f"Directive: capture ONLY the region matching: {only!r}. Locate it in the source, "
+            "show the user the matched range and a short snippet, confirm or adjust with them via "
+            "ask_user, then extract only that slice — ignore the rest of the source."
+        )
     if dry_run:
         lines.append("This is a DRY RUN: do not call vault_write; report your plan.")
     return "\n".join(lines)
@@ -61,6 +67,7 @@ def add(
     note=None,
     dry_run: bool = False,
     force: bool = False,
+    only=None,
 ) -> AddResult:
     source_id, source_type, origin = resolve_source(raw_input)
 
@@ -74,7 +81,7 @@ def add(
                 f"already ingested as {existing.note_paths}",
             )
 
-    output = run_engine(_input_prompt(origin, source_type, category, note, dry_run))
+    output = run_engine(_input_prompt(origin, source_type, category, note, dry_run, only))
 
     if dry_run:
         return AddResult("dry_run", source_id, [], output or "dry run — nothing written")

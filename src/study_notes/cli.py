@@ -27,6 +27,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="plan with you first: ask questions and confirm each note before writing",
     )
+    a.add_argument(
+        "--only",
+        metavar="DESCRIPTION",
+        help="capture only the part matching this description, e.g. 'the section on backpressure'; "
+        "locates it, shows you the range, and confirms before extracting (implies --interactive)",
+    )
 
     r = sub.add_parser("refine", help="interactively improve an existing note from your feedback")
     r.add_argument("path", help="vault-relative path of the note, e.g. 'Notes/API Design/Foo.md'")
@@ -37,6 +43,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     q.add_argument("--k", type=int, default=5, help="how many notes to retrieve")
 
     sub.add_parser("reindex", help="rebuild the index from the vault")
+
+    sub.add_parser(
+        "link", help="rebuild each note's related-links (a managed '## Related' section) vault-wide"
+    )
 
     login_p = sub.add_parser("login", help="log into a site for later paywalled fetches")
     login_p.add_argument("url", nargs="?")
@@ -62,6 +72,13 @@ def main(argv: list[str] | None = None) -> int:
 
         n = reindex(config, _make_index(config))
         print(f"reindexed {n} note(s)")
+        return 0
+
+    if ns.command == "link":
+        from study_notes.linker import run_link
+
+        notes_linked, total_links = run_link(config, _make_index(config))
+        print(f"linked {notes_linked} note(s) ({total_links} related-link(s))")
         return 0
 
     if ns.command == "query":
@@ -126,16 +143,18 @@ def main(argv: list[str] | None = None) -> int:
     ingest_log = IngestLog(index.conn)
 
     def run_engine(prompt: str) -> str:
-        if ns.interactive:
+        if ns.interactive or ns.only:
             from study_notes.agent.engine import _SN, _TOOLS, build_interactive_options
 
             os.environ.setdefault("MCP_TOOL_TIMEOUT", "3600000")
             ctx.ask_fn = input
-            system_prompt = (
-                Path(config.prompts["orchestrator"]).read_text()
-                + "\n\n"
-                + Path("prompts/interactive-capture.md").read_text()
-            )
+            parts = [
+                Path(config.prompts["orchestrator"]).read_text(),
+                Path("prompts/interactive-capture.md").read_text(),
+            ]
+            if ns.only:
+                parts.append(Path("prompts/partial-capture.md").read_text())
+            system_prompt = "\n\n".join(parts)
             opts = build_interactive_options(
                 ctx,
                 system_prompt=system_prompt,
@@ -156,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             note=ns.note,
             dry_run=ns.dry_run,
             force=ns.force,
+            only=ns.only,
         )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)

@@ -41,6 +41,31 @@ _HYBRID_SQL = _HYBRID_SQL_TMPL.format(cat="category = %(cat)s AND ")  # category
 _HYBRID_SQL_ALL = _HYBRID_SQL_TMPL.format(cat="")  # across all categories
 
 
+RELATED_HEADING = "## Related"
+
+
+def strip_related_section(text: str) -> str:
+    """Drop the auto-generated `## Related` block (heading and everything after it)
+    that `study-notes link` appends to note bodies. Those are navigation wikilinks for
+    Obsidian, not retrieval content, so they must not reach the embedding or the `fts`
+    column. `reindex` re-reads the file verbatim, so the strip has to sit here at the
+    single indexing seam to stay clean for both the linker and reindex."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == RELATED_HEADING:
+            return "\n".join(lines[:i]).rstrip()
+    return text.rstrip()
+
+
+def _embed_text(note: Note) -> str:
+    """Text handed to the embedder: a one-line source frame (Anthropic contextual
+    retrieval) prepended to the note so an isolated note keeps its parent-source
+    context. The frame is never stored or displayed, and the related-links block is
+    stripped so navigation wikilinks don't pollute the signal."""
+    frame = f"Part of {note.provenance.origin}. Topic area: {note.category}."
+    return f"{frame}\n{note.title}\n{strip_related_section(note.content)}"
+
+
 class VaultIndex:
     def __init__(self, conn: psycopg.Connection, embedder: Embedder) -> None:
         self.conn = conn
@@ -61,8 +86,9 @@ class VaultIndex:
             return [Category(name=n, description=d) for n, d in cur.fetchall()]
 
     def upsert_note(self, note: Note) -> None:
-        vec = self.embedder.embed([f"{note.title}\n{note.content}"])[0]
+        vec = self.embedder.embed([_embed_text(note)])[0]
         p = note.provenance
+        content = strip_related_section(note.content)  # keep the related block out of fts too
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -84,7 +110,7 @@ class VaultIndex:
                     "path": note.path,
                     "title": note.title,
                     "category": note.category,
-                    "content": note.content,
+                    "content": content,
                     "captured_at": p.captured_at,
                     "source": p.origin,
                     "source_type": p.input_type,
