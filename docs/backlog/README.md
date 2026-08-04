@@ -6,7 +6,22 @@ Future feature ideas and known follow-ups. Nothing here is blocking — the tool
 
 Rough priority: 🔴 worth doing soon · 🟡 nice to have · 🟢 someday / maybe.
 
-**Next up (the 🔴s):** partial/region capture.
+**Priority ordering (reviewed 2026-08-03).** A considered ranking of the features below; it
+supersedes the coarse 🔴/🟡/🟢 dots for planning. Logic: cheap retrieval and connection wins
+first, then capture quality for hard sources (a shared timed-segments cluster), then vault
+coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
+`feat/retrieval-and-capture`, pending merge.)
+
+1. **Contextual-prefix on embedded text**: near-free, sharpens all retrieval (query, placement, linking).
+2. **Auto-link notes into a knowledge graph**: the point of an Obsidian vault; reuses the index and improves as more notes are added.
+3. **Chapter-aware segmentation for long sources**: fixes the thin-summary collapse on 2-hour sources.
+4. **Partial / region capture**: NL-guided find-then-confirm (the standing 🔴).
+5. **Source-anchored claims (deep-linking)**: learning value, and unlocks a much better web viewer.
+6. **Reconcile-on-merge**: stop merged notes accreting into dated append-logs.
+7. **Source transparency & confidence**: cheap (mostly note-writing guide), core to a *learning* tool.
+8. **Batch & playlist ingestion**: real studying happens in batches; dedup already guards repeats.
+9. **More video hosts + podcasts**: near-free reach via the existing yt-dlp path and shipped Whisper fallback.
+10. **Content-type-aware capture templates**: lifts capture relevance; the safe, template-driven counterpart to `--inspired`.
 
 ---
 
