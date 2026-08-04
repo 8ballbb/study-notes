@@ -21,19 +21,10 @@ def test_partial_capture_writes_a_scoped_note(tmp_path, db_conn):
     from study_notes.vault_index import VaultIndex
 
     os.environ.setdefault("MCP_TOOL_TIMEOUT", "3600000")
-    # Self-contained config: the repo config with the vault_path placeholder filled in
-    # and pointed at a sandbox, so the e2e doesn't depend on this machine's config.toml.
     vault = tmp_path / "vault"
     vault.mkdir()
-    raw = (
-        Path("config.toml")
-        .read_text()
-        .replace('vault_path = "REPLACE_ME"', f'vault_path = "{vault}"')
-    )
-    assert "REPLACE_ME" not in raw, "config.toml placeholder line changed; update this test"
-    cfg_path = tmp_path / "config.toml"
-    cfg_path.write_text(raw)
-    cfg = load_config(cfg_path)
+    cfg = load_config(Path("config.toml"))
+    cfg = type(cfg)(**{**cfg.__dict__, "vault_path": vault})  # sandbox the vault
     index = VaultIndex(db_conn, FakeEmbedder())
     ctx = EngineContext(
         config=cfg,

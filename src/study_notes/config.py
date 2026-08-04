@@ -34,12 +34,13 @@ def load_config(path: Path) -> Config:
     if not raw_vault or PLACEHOLDER in raw_vault:
         raise ConfigError(
             f"vault_path is unset in {path} (still the {PLACEHOLDER!r} placeholder). "
-            "Edit config.toml and set vault_path to the absolute path of your Obsidian "
-            "vault (it must live under $HOME)."
+            "Edit config.toml and set vault_path to your Obsidian vault: an absolute path, "
+            "or one relative to this config file (it must resolve under $HOME)."
         )
     vault_path = Path(raw_vault).expanduser()
     if not vault_path.is_absolute():
-        raise ConfigError(f"vault_path must be an absolute path, got {raw_vault!r} in {path}.")
+        # resolve a relative path against the config file's directory (cwd-independent)
+        vault_path = (path.resolve().parent / vault_path).resolve()
     return Config(
         vault_path=vault_path,
         notes_root=data["notes_root"],

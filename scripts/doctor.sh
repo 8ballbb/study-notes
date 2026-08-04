@@ -60,15 +60,18 @@ vault="$(sed -nE 's/^[[:space:]]*vault_path[[:space:]]*=[[:space:]]*"?([^"]*)"?.
 vault="${vault/#\~/$HOME}"
 if [ -z "$vault" ] || [ "$vault" = "REPLACE_ME" ]; then
   printf '  [MISS] vault_path is still the REPLACE_ME placeholder\n'
-  printf '           fix: set vault_path in config.toml to your Obsidian vault (an absolute path under $HOME)\n'
+  printf '           fix: set vault_path in config.toml to your Obsidian vault (absolute, or relative to config.toml; must resolve under $HOME)\n'
   fail=$((fail + 1))
-elif [ -d "$vault" ] && [ "${vault#"$HOME"}" != "$vault" ]; then
-  printf '  [ok]   vault_path set, exists, and under $HOME (%s)\n' "$vault"; pass=$((pass + 1))
 else
-  printf '  [MISS] vault_path set, exists, and under $HOME\n'
-  printf '           fix: set vault_path in config.toml to an existing folder under $HOME\n'
-  printf '                (the Docker VM only bind-mounts $HOME); e.g. mkdir -p "$HOME/vault"\n'
-  fail=$((fail + 1))
+  case "$vault" in /*) ;; *) vault="$PWD/$vault" ;; esac  # relative -> resolve against repo root (config.toml lives here)
+  if [ -d "$vault" ] && [ "${vault#"$HOME"}" != "$vault" ]; then
+    printf '  [ok]   vault_path set, exists, and under $HOME (%s)\n' "$vault"; pass=$((pass + 1))
+  else
+    printf '  [MISS] vault_path set, exists, and under $HOME\n'
+    printf '           fix: set vault_path in config.toml to an existing folder under $HOME\n'
+    printf '                (the Docker VM only bind-mounts $HOME); e.g. mkdir -p "$HOME/vault"\n'
+    fail=$((fail + 1))
+  fi
 fi
 
 echo

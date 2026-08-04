@@ -56,7 +56,7 @@ def test_vault_path_is_expanded(tmp_path):
     assert cfg.vault_path == Path.home() / "some-vault"
 
 
-def test_relative_vault_path_raises(tmp_path):
-    p = _config_with_vault(tmp_path, "relative/vault")
-    with pytest.raises(ConfigError, match="absolute"):
-        load_config(p)
+def test_relative_vault_path_resolves_against_config_dir(tmp_path):
+    p = _config_with_vault(tmp_path, "vault")
+    cfg = load_config(p)
+    assert cfg.vault_path == (tmp_path / "vault").resolve()
