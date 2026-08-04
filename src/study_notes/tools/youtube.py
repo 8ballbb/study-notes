@@ -1,7 +1,7 @@
 import logging
 import re
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _CUE_TIME = re.compile(r"(\d{2}:\d{2}:\d{2})\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}")
@@ -15,12 +15,20 @@ class TranscriptSegment:
 
 
 @dataclass
+class Chapter:
+    title: str
+    start: str  # "HH:MM:SS"
+    end: str  # "HH:MM:SS"
+
+
+@dataclass
 class TranscriptResult:
     url: str
     video_id: str
     title: str
     upload_date: str | None  # "YYYY-MM-DD"
     segments: list["TranscriptSegment"]
+    chapters: list["Chapter"] = field(default_factory=list)
 
 
 def parse_vtt(text: str) -> list[TranscriptSegment]:
@@ -56,6 +64,19 @@ def _fmt_upload_date(raw: str | None) -> str | None:
     return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
 
 
+def _chapters_from_info(info: dict) -> list[Chapter]:
+    """yt-dlp exposes `chapters` (start_time/end_time in seconds) when a video has them.
+    Normalize to the same HH:MM:SS format the transcript segments use."""
+    return [
+        Chapter(
+            title=c.get("title", ""),
+            start=_secs_to_hhmmss(c.get("start_time", 0.0)),
+            end=_secs_to_hhmmss(c.get("end_time", 0.0)),
+        )
+        for c in (info.get("chapters") or [])
+    ]
+
+
 def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
     if not vtt_path.exists():
         raise TranscriptUnavailable(url)
@@ -68,6 +89,7 @@ def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
         title=info.get("title", ""),
         upload_date=_fmt_upload_date(info.get("upload_date")),
         segments=segments,
+        chapters=_chapters_from_info(info),
     )
 
 

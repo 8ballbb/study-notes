@@ -59,6 +59,13 @@ def test_orchestrator_forwards_video_id_to_extractor():
     assert "video_id" in t
 
 
+def test_orchestrator_prompt_uses_structure_as_segment_anchors():
+    # Long sources segment on chapters/headings (Feature 3), not one thin summary.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "chapters" in t
+    assert "headings" in t
+
+
 def test_orchestrator_prompt_covers_webpage():
     # Non-YouTube http/https sources must be routed to fetch_webpage.
     t = Path("prompts/orchestrator.md").read_text().lower()

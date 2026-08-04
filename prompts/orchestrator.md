@@ -13,7 +13,11 @@ and whether this is a dry run.
    http/https URL that is not YouTube) call `fetch_webpage` and use its returned text as the
    source; for a file read it directly. Split the material into distinct topics — a title, scope,
    and the source slice for each. Skip non-content (sponsor reads, intros). Do the splitting
-   yourself; it needs judgment.
+   yourself; it needs judgment. Use the structure the source already gives you as anchors: the
+   `chapters` returned with a YouTube transcript, or the Markdown headings in a webpage. These are
+   hints, not a rule — merge thin chapters, split a chapter that covers two things. For a long
+   source with no such structure, segment it by time or length so each note stays specific; a
+   two-hour talk should become several focused notes, not one thin summary.
 2. **Resolve placement per topic.** Use the forced `category` if given, else call
    `list_categories` and pick a fitting existing category or a genuinely new one. Then, unless a
    `target_note` was forced, call `vault_search(query, category)` to decide new-note vs merge.

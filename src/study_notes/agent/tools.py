@@ -36,6 +36,9 @@ def build_tool_server(ctx: EngineContext):
                 "title": r.title,
                 "upload_date": r.upload_date,
                 "segments": [{"start": s.start, "text": s.text} for s in r.segments],
+                "chapters": [
+                    {"title": c.title, "start": c.start, "end": c.end} for c in r.chapters
+                ],
             }
         )
 
