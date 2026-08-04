@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="808" height="528" viewBox="96.0 986.0 808.0 528.0" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L9,3 L0,6 z" fill="#1e1e1e"/></marker></defs>
+<rect x="96.0" y="986.0" width="808.0" height="528.0" fill="#ffffff"/>
+<rect x="120.0" y="1010.0" width="340.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="120.0" y="1100.0" width="340.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="120.0" y="1180.0" width="340.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="120.0" y="1270.0" width="340.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="120.0" y="1350.0" width="340.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="120.0" y="1440.0" width="340.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="600.0" y="1010.0" width="280.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#d3f9d8"/>
+<rect x="600.0" y="1110.0" width="280.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#d3f9d8"/>
+<polyline points="290.0,1070.0 290.0,1100.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="290.0,1150.0 290.0,1180.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="290.0,1240.0 290.0,1270.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="290.0,1320.0 290.0,1350.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="290.0,1410.0 290.0,1440.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="740.0,1060.0 740.0,1110.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<text x="290.0" y="1038.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">draft note from source</tspan>
+<tspan x="290.0" dy="17.5">Feynman-plain voice</tspan>
+</text>
+<text x="290.0" y="1123.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">find visual-cue moments</tspan>
+</text>
+<text x="290.0" y="1208.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">select_keyframes</tspan>
+<tspan x="290.0" dy="17.5">ffmpeg → blur/dedup → montage</tspan>
+</text>
+<text x="290.0" y="1293.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">read montage → pick best frame</tspan>
+</text>
+<text x="290.0" y="1378.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">keep_frame</tspan>
+<tspan x="290.0" dy="17.5">Attachments/frames/&lt;video_id&gt;/</tspan>
+</text>
+<text x="290.0" y="1463.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="290.0" dy="0">check_slop (self-screen)</tspan>
+</text>
+<text x="740.0" y="1033.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="740.0" dy="0">WebSearch / WebFetch</tspan>
+</text>
+<text x="740.0" y="1138.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="740.0" dy="0">cited additions</tspan>
+<tspan x="740.0" dy="17.5">a source URL on every claim</tspan>
+</text>
+</svg>

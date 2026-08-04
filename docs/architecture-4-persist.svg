@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="508" height="498" viewBox="286.0 1466.0 508.0 498.0" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L9,3 L0,6 z" fill="#1e1e1e"/></marker></defs>
+<rect x="286.0" y="1466.0" width="508.0" height="498.0" fill="#ffffff"/>
+<rect x="350.0" y="1490.0" width="380.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="400.0" y="1590.0" width="280.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="330.0" y="1680.0" width="420.0" height="60.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="400.0" y="1780.0" width="280.0" height="50.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="310.0" y="1870.0" width="460.0" height="70.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#ffe8cc"/>
+<polyline points="540.0,1550.0 540.0,1590.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="540.0,1640.0 540.0,1680.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="540.0,1740.0 540.0,1780.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="540.0,1830.0 540.0,1870.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<text x="540.0" y="1518.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">orchestrator integrates</tspan>
+<tspan x="540.0" dy="17.5">note + citations → one note</tspan>
+</text>
+<text x="540.0" y="1613.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">check_slop on final note</tspan>
+</text>
+<text x="540.0" y="1708.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">vault_write</tspan>
+<tspan x="540.0" dy="17.5">OKF frontmatter · non-destructive · atomic read-back</tspan>
+</text>
+<text x="540.0" y="1803.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">record in ingest log</tspan>
+</text>
+<text x="540.0" y="1903.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">Obsidian vault</tspan>
+<tspan x="540.0" dy="17.5">Notes/&lt;Category&gt;/*.md · Attachments/frames · Postgres/pgvector</tspan>
+</text>
+</svg>

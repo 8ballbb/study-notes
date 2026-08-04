@@ -39,56 +39,35 @@ Everything lands as Markdown in your vault, indexed for semantic search.
 
 ## How it works
 
-A single agentic run, structured as an **orchestrator with workers**:
+A single agentic run, structured as an **orchestrator with workers**. The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel, so a multi-topic source doesn't crawl through one long sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
 
-```mermaid
-flowchart TB
-    CLI["study-notes add &lt;url / file&gt;"] --> DEDUP{"already ingested?"}
-    DEDUP -->|yes| SKIP([skip])
-    DEDUP -->|no| KIND{"source type"}
-    KIND -->|"YouTube URL"| YT["fetch_youtube_transcript<br/>captions, else local Whisper"]
-    KIND -->|"webpage URL"| WEBPAGE["fetch_webpage<br/>Playwright render (logged-in) → trafilatura"]
-    KIND -->|"local file"| DOC["read the file directly<br/>Read: text / Markdown / PDF (pandoc for .docx)"]
+The pipeline runs in four stages.
 
-    YT --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
-    WEBPAGE --> SPLIT
-    DOC --> SPLIT
+### 1. Ingest and route
 
-    SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
-    PLACE --> GATE{"video source,<br/>visual enough for frames?"}
+![Ingest and route](docs/architecture-1-ingest.svg)
 
-    PREP["prepare_video once<br/>≤480p, shared by workers"]
-    DISPATCH(["dispatch each topic, in parallel"])
-    GATE -->|yes| PREP --> DISPATCH
-    GATE -->|"no / not a video"| DISPATCH
+`study-notes add` is the front door. A dedup gate (the ingest log) drops anything already captured, then the input is routed by type to one of three fetchers: `yt-dlp` captions with a local Whisper fallback for YouTube, a Playwright render into `trafilatura` for webpages, or a direct read for local files. Each returns clean text; YouTube also returns timed segments and chapters.
 
-    DISPATCH --> EXT
-    DISPATCH --> ENR
+### 2. Decompose, place, and dispatch
 
-    subgraph EXT["extractor subagent · sonnet"]
-        direction TB
-        DRAFT["draft the note from the source<br/>Feynman-plain voice"]
-        DRAFT --> CUES["find the visual-cue moments in the text"]
-        CUES --> SEL["select_keyframes<br/>ffmpeg mpdecimate → blur filter → dHash dedup + settled frame → montage"]
-        SEL --> PICK["Read the montage, pick the best frame"]
-        PICK --> KEEP["keep_frame → Attachments/frames/&lt;video_id&gt;/<br/>skips perceptual duplicates"]
-        KEEP --> SS1["check_slop (self-screen)"]
-    end
+![Decompose, place, and dispatch](docs/architecture-2-decompose.svg)
 
-    subgraph ENR["enricher subagent · sonnet"]
-        direction TB
-        WEB["WebSearch / WebFetch"] --> CITE["cited additions<br/>a source URL on every claim"]
-    end
+The orchestrator reads the source once and splits it into distinct topics (using chapters or headings as anchors), each with a title, scope, and source slice. For every topic it checks the existing categories and searches the vault to choose between a new note and a dated merge, decides whether the source is visual enough to pull frames (preparing one downscaled video if so), then dispatches the topics to run in parallel.
 
-    EXT --> INT["orchestrator integrates<br/>note + citations → one note"]
-    ENR --> INT
-    INT --> SCREEN["check_slop on the final note"]
-    SCREEN --> WRITE["vault_write<br/>OKF frontmatter · non-destructive · atomic read-back · updates MOC + index"]
-    WRITE --> REC["record in the ingest log<br/>path recovered from notes.source"]
-    REC --> STORE[("Obsidian vault<br/>Notes/&lt;Category&gt;/*.md · Attachments/frames · Postgres/pgvector")]
-```
+### 3. The two workers
 
-The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel — so a multi-topic source doesn't crawl through one giant sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
+![Extractor and enricher workers](docs/architecture-3-workers.svg)
+
+Each topic runs two workers in isolated contexts. The **extractor** drafts the note from its slice in a Feynman-plain voice, self-screens with `check_slop`, and for visual sources pulls frames: it finds visual-cue moments, calls `select_keyframes` (ffmpeg samples candidates, then a local blur filter and perceptual dedup lay them out as a contact sheet), picks the useful ones, and calls `keep_frame`. The **enricher** runs WebSearch/WebFetch to add externally-cited claims. Frames are best-effort: if any step fails, the note is still written from the transcript.
+
+### 4. Integrate and persist
+
+![Integrate and persist](docs/architecture-4-persist.svg)
+
+The orchestrator folds the enricher's citations into a single note, runs a final `check_slop` pass, and writes it. Writes are non-destructive (new notes never overwrite; updates append a dated section), carry deterministic OKF frontmatter, link into the category MOC, and upsert into Postgres/`pgvector`. The ingest log records what was written.
+
+<sup>Diagram sources: [`docs/architecture-1-ingest.excalidraw`](docs/architecture-1-ingest.excalidraw) · [`-2-decompose`](docs/architecture-2-decompose.excalidraw) · [`-3-workers`](docs/architecture-3-workers.excalidraw) · [`-4-persist`](docs/architecture-4-persist.excalidraw). Export each to the matching `.svg`.</sup>
 
 ## Requirements
 
