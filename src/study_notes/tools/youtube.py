@@ -113,6 +113,20 @@ def _secs_to_hhmmss(seconds: float) -> str:
     return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
+def _hhmmss_to_secs(hhmmss: str) -> int:
+    parts = [int(p) for p in hhmmss.split(":")]
+    while len(parts) < 3:
+        parts.insert(0, 0)
+    h, m, s = parts[-3], parts[-2], parts[-1]
+    return h * 3600 + m * 60 + s
+
+
+def youtube_deeplink(video_id: str, hhmmss: str) -> str:
+    """A deep link that opens the video at a given moment: `youtu.be/<id>?t=<secs>`.
+    Used to anchor a note's claims back to the exact source moment they came from."""
+    return f"https://youtu.be/{video_id}?t={_hhmmss_to_secs(hhmmss)}"
+
+
 def _segments_to_result(
     url: str,
     video_id: str,

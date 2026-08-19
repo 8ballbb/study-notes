@@ -22,3 +22,11 @@ def test_parse_vtt_extracts_timed_segments():
 
 def test_parse_vtt_empty_returns_empty():
     assert parse_vtt("WEBVTT\n\n") == []
+
+
+def test_youtube_deeplink_builds_timestamped_url():
+    from study_notes.tools.youtube import youtube_deeplink
+
+    assert youtube_deeplink("dQw4w9WgXcQ", "00:12:04") == "https://youtu.be/dQw4w9WgXcQ?t=724"
+    assert youtube_deeplink("abc", "00:00:00") == "https://youtu.be/abc?t=0"
+    assert youtube_deeplink("abc", "01:02:03") == "https://youtu.be/abc?t=3723"

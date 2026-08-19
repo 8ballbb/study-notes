@@ -120,3 +120,17 @@ def test_query_prompt_is_grounded_and_cited():
     t = Path("prompts/query.md").read_text().lower()
     assert "only" in t  # answer only from provided notes
     assert "[[" in t  # cite with wikilinks
+
+
+def test_note_writing_guide_anchors_claims_to_source():
+    # Feature: each claim can deep-link back to its exact source moment.
+    t = Path("prompts/note-writing.md").read_text().lower()
+    assert "anchor" in t
+    assert "?t=" in t or "youtu.be" in t  # the deep-link form
+
+
+def test_orchestrator_preserves_segment_deeplinks_in_slice():
+    # The lead must keep each segment's url in the slice so the extractor can anchor claims.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "anchor" in t
+    assert "url" in t

@@ -35,7 +35,14 @@ def build_tool_server(ctx: EngineContext):
                 "video_id": r.video_id,
                 "title": r.title,
                 "upload_date": r.upload_date,
-                "segments": [{"start": s.start, "text": s.text} for s in r.segments],
+                "segments": [
+                    {
+                        "start": s.start,
+                        "text": s.text,
+                        "url": youtube.youtube_deeplink(r.video_id, s.start),
+                    }
+                    for s in r.segments
+                ],
                 "chapters": [
                     {"title": c.title, "start": c.start, "end": c.end} for c in r.chapters
                 ],

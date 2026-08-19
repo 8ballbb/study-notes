@@ -280,6 +280,38 @@ async def test_rewrite_note_tool_rewrites_body(tmp_path, db_conn):
 
 
 @pytest.mark.asyncio
+async def test_fetch_youtube_transcript_tool_adds_segment_deeplinks(tmp_path, db_conn, monkeypatch):
+    # Each transcript segment carries a ?t= deep link so the extractor can anchor claims.
+    from study_notes.agent import tools as t
+    from study_notes.tools.youtube import TranscriptResult, TranscriptSegment
+
+    def fake_fetch(url, *, whisper_model=None):
+        return TranscriptResult(
+            url=url,
+            video_id="vid123",
+            title="T",
+            upload_date="2025-11-14",
+            segments=[
+                TranscriptSegment(start="00:00:05", text="hello"),
+                TranscriptSegment(start="00:12:04", text="backpressure"),
+            ],
+            chapters=[],
+        )
+
+    monkeypatch.setattr(t.youtube, "fetch_youtube_transcript", fake_fetch)
+    _, tools = t.build_tool_server(_ctx(tmp_path, db_conn))
+    out = json.loads(
+        _text(await _call(tools, "fetch_youtube_transcript", {"url": "https://youtu.be/vid123"}))
+    )
+    assert out["segments"][0] == {
+        "start": "00:00:05",
+        "text": "hello",
+        "url": "https://youtu.be/vid123?t=5",
+    }
+    assert out["segments"][1]["url"] == "https://youtu.be/vid123?t=724"
+
+
+@pytest.mark.asyncio
 async def test_fetch_webpage_tool_returns_ok_shape(tmp_path, db_conn, monkeypatch):
     # No real browser: monkeypatch webpage.fetch_webpage with an async fake.
     from study_notes.agent import tools as t

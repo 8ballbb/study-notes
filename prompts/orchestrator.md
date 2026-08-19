@@ -26,7 +26,9 @@ and whether this is a dry run.
 3. **Delegate, in parallel where possible.** For each topic, invoke the `extractor` subagent
    (give it: the topic's source slice, the note-writing guide is already its system prompt, and
    the neighbor note if any) and the `enricher` subagent (give it the topic's key claims). Issue
-   multiple subagent calls together so they run concurrently.
+   multiple subagent calls together so they run concurrently. For a YouTube source, keep each
+   transcript segment's timestamp and its `url` in the slice you hand the extractor (verbatim), so
+   it can anchor each claim back to the exact source moment.
 4. **Frames (only if the video SHOWS things).** FIRST decide whether the video puts anything on
    screen worth capturing — slides, diagrams, code, a whiteboard, charts, a screen-share, a demo.
    If it does AT ANY POINT, treat it as visual: a presenter who also shows slides counts as visual.
