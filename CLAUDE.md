@@ -83,7 +83,9 @@ It is bundled in the suite unless you exclude it — always add `and not e2e` fo
 - `docs/superpowers/{specs,plans}/` — design specs (the *why*) and implementation plans (the *how*).
 
 ## Conventions & invariants
-- **Vault writes are non-destructive** — new notes never overwrite; merges append a dated section.
+- **Vault writes are non-destructive** — new notes never overwrite (`vault_write` refuses to clobber);
+  a merge reconciles new material into the existing note's body via `rewrite_note` (frontmatter and
+  provenance preserved, no dated append-log).
 - **Frames are best-effort** — any frame step may fail; the note is still written from the transcript.
 - **Note frontmatter is OKF-aligned and deterministic** — `write_markdown` prepends a canonical block
   (`type`/`resource`/`timestamp`/`description`/`tags` + `category`/`source_type`/`source_date`);

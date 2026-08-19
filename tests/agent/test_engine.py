@@ -103,6 +103,8 @@ def test_build_options_wires_models_agents_tools(tmp_path, db_conn):
     assert "mcp__study-notes__keep_frame" in opts.allowed_tools
     assert "Read" in opts.allowed_tools
     assert "mcp__study-notes__extract_frame" not in opts.allowed_tools
+    # reconcile-on-merge: the add path can rewrite an existing note in place
+    assert "mcp__study-notes__rewrite_note" in opts.allowed_tools
 
 
 @pytest.mark.asyncio

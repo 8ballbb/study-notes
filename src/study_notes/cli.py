@@ -164,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
                 ctx,
                 system_prompt=system_prompt,
                 allowed=[*_TOOLS, f"{_SN}ask_user"],
-                approve_tools=[f"{_SN}vault_write"],
+                approve_tools=[f"{_SN}vault_write", f"{_SN}rewrite_note"],
             )
             return asyncio.run(run_ingest(ctx, prompt, options=opts))
         return asyncio.run(run_ingest(ctx, prompt))
