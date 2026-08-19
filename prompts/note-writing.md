@@ -21,6 +21,13 @@ You are given one topic's source material (and maybe a neighbor note to match in
   enrichment you are given.
 - Put external, enrichment-derived sources under a final `## Citations` section, each a bullet with
   its URL (the OKF citations convention). Leave in-source facts un-cited.
+- **Anchor claims to the source moment.** When your source slice carries per-segment source links
+  (a YouTube timestamped transcript, where each segment has a `url`), append a compact source anchor
+  to the sentence or bullet stating a fact drawn from that moment — a markdown link on the segment's
+  timestamp, e.g. `the leader is elected once per term [12:04](https://youtu.be/<id>?t=724)`. Use the
+  segment's provided `url` VERBATIM; never hand-build the `?t=` link. Anchor the key claims, not every
+  sentence. This is distinct from `## Citations` (external/enrichment sources). Omit anchors entirely
+  when the slice has no per-segment links (webpages, files).
 - Follow the anti-slop guide.
 
 ## Voice (Feynman-plain)
