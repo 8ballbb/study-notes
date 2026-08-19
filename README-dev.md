@@ -25,9 +25,12 @@ Stop / reset:
 ## Tests
 
     export STUDY_NOTES_TEST_DB="postgresql://postgres:postgres@localhost:5432/study_notes_test"
-    uv run pytest -m "not slow and not integration"   # fast unit tests
-    uv run pytest -m integration                       # needs the DB container up
-    uv run pytest -m slow                               # downloads BGE-M3
+    uv run pytest -m "not slow and not docker and not e2e and not browser and not network"   # fast, token-free (~3.5s); needs DB container up
+    uv run pytest -m docker                # frame tests — needs Docker daemon + jrottenberg/ffmpeg:6.1-alpine
+    uv run pytest -m e2e                   # real agentic ingest — slow + spends Claude tokens; ask before running
+    uv run pytest -m browser              # Playwright browser tests — run manually
+    uv run pytest -m network             # hits live network (YouTube) — run manually; YouTube blocks CI IPs
+    uv run pytest -m slow                 # downloads BGE-M3
 
 ## ffmpeg (frame extraction) — via Docker
 

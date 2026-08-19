@@ -30,8 +30,9 @@ Point it at a source and it will:
 - **Fetch the source** — YouTube captions (with a local **Whisper** fallback for caption-less videos), a webpage (rendered with **Playwright**, including JS-heavy and paywalled pages behind a one-time login, then extracted with **trafilatura**), or a local document read directly.
 - **Split it into distinct topics** — one long video can become several focused notes.
 - **Write each note in whatever structure fits the content** — an explanation, a comparison table, a step-by-step, a worked example, a decision guide — composed as the material warrants, not forced into flashcards, in a plain, teaching **Feynman-plain voice** (with an anti-slop checker that flags AI-filler phrasing).
+- **Anchor claims to the source moment** — each key claim in a YouTube note carries a `[timestamp](url)` deep-link so you can jump back to exactly where it was said.
 - **Research each topic online** and fold in authoritative context, corrections, and examples the source skipped, with a **source URL on every external claim** (gathered under a `## Citations` section).
-- **Decide where each note belongs** — reuse an existing category or create a new one — and write it **non-destructively** (never overwrites; merges append a dated section).
+- **Decide where each note belongs** — reuse an existing category or create a new one — and write it **non-destructively** (never overwrites; merges reconcile new material into the existing note body).
 - **Pull the frames that actually help** — for visual moments a note references, it selects candidate frames locally (scene-dedup + blur filter + perceptual de-duplication, keeping the *settled* frame of an animation), then *reads* them and embeds only the few that add something the text can't, transcribing their on-screen content into the note so it stands alone.
 - **Remember what it has ingested**, so re-adding the same URL/file is skipped.
 
@@ -65,7 +66,7 @@ Each topic runs two workers in isolated contexts. The **extractor** drafts the n
 
 ![Integrate and persist](docs/architecture-4-persist.svg)
 
-The orchestrator folds the enricher's citations into a single note, runs a final `check_slop` pass, and writes it. Writes are non-destructive (new notes never overwrite; updates append a dated section), carry deterministic OKF frontmatter, link into the category MOC, and upsert into Postgres/`pgvector`. The ingest log records what was written.
+The orchestrator folds the enricher's citations into a single note, runs a final `check_slop` pass, and writes it. Writes are non-destructive: new notes never overwrite, and merges reconcile new material into the existing note body (no dated append-log). Notes carry deterministic OKF frontmatter, link into the category MOC, and upsert into Postgres/`pgvector`. The ingest log records what was written.
 
 <sup>Diagram sources: [`docs/architecture-1-ingest.excalidraw`](docs/architecture-1-ingest.excalidraw) · [`-2-decompose`](docs/architecture-2-decompose.excalidraw) · [`-3-workers`](docs/architecture-3-workers.excalidraw) · [`-4-persist`](docs/architecture-4-persist.excalidraw). Export each to the matching `.svg`.</sup>
 
@@ -249,7 +250,7 @@ The design and build history live under [`docs/superpowers/`](docs/superpowers/)
 ## Development
 
 ```bash
-uv run pytest -m "not slow and not docker and not e2e"   # fast, token-free suite (~3.5s)
+uv run pytest -m "not slow and not docker and not e2e and not browser and not network"   # fast, token-free suite (~3.5s)
 uv run pytest -m docker                                   # frame tests (needs a Docker daemon + ffmpeg image)
 uv run pytest -m e2e                                      # real end-to-end agentic run — SPENDS Claude tokens
 ```
@@ -276,4 +277,4 @@ Deliberately deferred, not blocking:
 - BGE-M3 learned-sparse vectors for stronger lexical retrieval.
 - An optional OKF *export* (converting the vault into a fully-conformant OKF bundle for other agents/tools).
 
-Recently shipped: local Whisper fallback for caption-less videos; targeted, montage-based frame selection with per-video storage; OKF-aligned note frontmatter; a Feynman-plain writing voice.
+Recently shipped: source-anchored claims (YouTube `?t=` deep-links on every key claim); reconcile-on-merge (merges fold into the note body, no dated append-log); partial/region capture (`--only`); `query` command (grounded, cited answers from the vault); interactive `refine` and `add --interactive` modes; local Whisper fallback for caption-less videos; targeted, montage-based frame selection; OKF-aligned frontmatter; Feynman-plain writing voice.
