@@ -30,7 +30,7 @@ uv run study-notes link                                  # rebuild each note's m
 uv run study-notes login <url>                            # one-time login for a paywalled site (opens a real browser)
 uv run study-notes reindex                               # rebuild search index + category MOCs from disk
 
-uv run pytest -m "not slow and not docker and not e2e"   # fast, TOKEN-FREE suite (~3.5s) — use this
+uv run pytest -m "not slow and not docker and not e2e and not network"   # fast, TOKEN-FREE suite (~3.5s) — use this
 uv run pytest -m docker                                  # frame tests (needs a Docker daemon + jrottenberg/ffmpeg:6.1-alpine)
 uv run pytest -m e2e                                     # live agentic ingest — SLOW + SPENDS CLAUDE TOKENS
 ```
