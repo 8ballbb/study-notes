@@ -8,13 +8,28 @@ on:
 
 jobs:
   ci:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: study_notes_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
@@ -25,7 +40,8 @@ jobs:
         run: uv sync --group dev
 
       - name: Lint & type-check
-        run: uv run pre-commit run --all-files
+        # no-commit-to-branch is a local guardrail; it must not run in CI (HEAD is master here).
+        run: SKIP=no-commit-to-branch uv run pre-commit run --all-files
 
       - name: Test
         run: uv run pytest -m "not slow and not docker and not e2e and not browser"
