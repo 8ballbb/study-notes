@@ -134,3 +134,11 @@ def test_orchestrator_preserves_segment_deeplinks_in_slice():
     t = Path("prompts/orchestrator.md").read_text().lower()
     assert "anchor" in t
     assert "url" in t
+
+
+def test_orchestrator_reconciles_merge_into_body():
+    # Reconcile-on-merge: on a merge, read the existing note and rewrite_note it in place,
+    # folding new material into the body — not a dated append.
+    t = Path("prompts/orchestrator.md").read_text().lower()
+    assert "rewrite_note" in t
+    assert "reconcile" in t or "fold" in t

@@ -44,6 +44,7 @@ _TOOLS = [
         "select_keyframes",
         "keep_frame",
         "vault_write",
+        "rewrite_note",
         "check_slop",
     )
 ]

@@ -46,8 +46,13 @@ and whether this is a dry run.
 5. **Integrate.** Merge each extractor's note with its enricher's cited additions into one final
    note. Keep enrichment meaningful; keep every external claim's source URL.
 6. **Screen.** Call `check_slop` on each final note; revise wording you agree reads as slop.
-7. **Write.** Call `vault_write` with the finished `markdown`, passing the EXACT `source` string
-   you were given. New notes never overwrite; category folders/MOCs are handled for you.
+7. **Write.** For a NEW note, call `vault_write` with the finished `markdown`, passing the EXACT
+   `source` string you were given (new notes never overwrite; category folders/MOCs are handled for
+   you). For a MERGE into an existing note — a forced `target_note`, or a strong `vault_search`
+   match — do NOT call `vault_write` (it refuses to overwrite an existing note): resolve the note's
+   path, `Read` its current content, then **reconcile** the new material INTO the existing body —
+   fold it into the prose, keep all existing provenance, and do NOT append a dated section — and
+   call `rewrite_note(path, markdown)` with the full reconciled note.
 8. **Verify.** Confirm each note is well-formed, grounded, correctly placed, and complete.
 
 ## Dry run
