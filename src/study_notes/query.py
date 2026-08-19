@@ -1,6 +1,7 @@
 """Read-only `query` command: retrieve across the vault and answer, grounded + cited."""
 
 import asyncio
+import sys
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage
@@ -64,6 +65,11 @@ def answer_question(
     order = {p: i for i, (p, _) in enumerate(hits)}
     notes = index.get_notes([p for p, _ in hits])
     notes.sort(key=lambda n: order.get(n[0], len(order)))  # preserve retrieval ranking
+    if len(notes) > MAX_NOTES:
+        print(
+            f"note: grounding the answer in the top {MAX_NOTES} of {len(notes)} retrieved notes",
+            file=sys.stderr,
+        )
     notes = notes[:MAX_NOTES]
     system_prompt = Path(config.prompts.get("query", "prompts/query.md")).read_text()
     user_prompt = _build_user_prompt(question, notes)

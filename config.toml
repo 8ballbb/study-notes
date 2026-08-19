@@ -1,7 +1,8 @@
 # Your Obsidian vault: an absolute path, or one relative to this file (resolved against
-# it). It MUST resolve under $HOME (the Docker VM only bind-mounts $HOME). The default
-# 'vault' is a repo-local, gitignored directory so a fresh clone runs without setup.
-vault_path = "vault"
+# it). It MUST resolve under $HOME (the Docker VM only bind-mounts $HOME). Replace the
+# REPLACE_ME placeholder with your real vault before running — setup/doctor refuse to
+# proceed while it is unset.
+vault_path = "REPLACE_ME"
 notes_root = "Notes"
 attachments_dir = "Attachments"
 frames_subdir = "frames"
@@ -16,12 +17,17 @@ model = "BAAI/bge-m3"
 orchestrator = "claude-opus-4-8"
 extractor = "claude-sonnet-5"
 enricher = "claude-sonnet-5"
+query = "claude-opus-4-8"     # read-only synthesis for `study-notes query`
 
 [prompts]
 orchestrator = "prompts/orchestrator.md"
 note_writing = "prompts/note-writing.md"
 enrichment = "prompts/enrichment.md"
 anti_slop = "prompts/anti-slop.md"
+query = "prompts/query.md"
+refine = "prompts/refine.md"
+interactive_capture = "prompts/interactive-capture.md"
+partial_capture = "prompts/partial-capture.md"
 
 [run]
 dry_run = false

@@ -1,3 +1,5 @@
+import re
+
 import psycopg
 from pgvector import Vector
 
@@ -44,15 +46,26 @@ _HYBRID_SQL_ALL = _HYBRID_SQL_TMPL.format(cat="")  # across all categories
 RELATED_HEADING = "## Related"
 
 
+_WIKILINK_BULLET = re.compile(r"^- \[\[.*\]\]$")
+
+
 def strip_related_section(text: str) -> str:
     """Drop the auto-generated `## Related` block (heading and everything after it)
     that `study-notes link` appends to note bodies. Those are navigation wikilinks for
     Obsidian, not retrieval content, so they must not reach the embedding or the `fts`
     column. `reindex` re-reads the file verbatim, so the strip has to sit here at the
-    single indexing seam to stay clean for both the linker and reindex."""
+    single indexing seam to stay clean for both the linker and reindex.
+
+    Only the *managed* block is stripped: a `## Related` heading whose following non-blank
+    lines are all `- [[...]]` bullets (exactly what `apply_related_section` emits). A note
+    that legitimately uses a `## Related` heading over prose is left untouched, so real
+    content never gets dropped from the stored `content`/embedding."""
     lines = text.splitlines()
     for i, line in enumerate(lines):
-        if line.strip() == RELATED_HEADING:
+        if line.strip() != RELATED_HEADING:
+            continue
+        tail = [ln.strip() for ln in lines[i + 1 :] if ln.strip()]
+        if tail and all(_WIKILINK_BULLET.match(ln) for ln in tail):
             return "\n".join(lines[:i]).rstrip()
     return text.rstrip()
 

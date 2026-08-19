@@ -47,6 +47,13 @@ def test_strip_related_noop_without_heading():
     assert strip_related_section("Just prose.\n") == "Just prose."
 
 
+def test_strip_related_keeps_prose_related_section():
+    # a legitimate "## Related" section over prose (not the managed wikilink block)
+    # must survive — only the auto-generated bullet block is stripped
+    text = "Prose.\n\n## Related\nSee the broader consensus literature for context."
+    assert strip_related_section(text) == text.rstrip()
+
+
 def test_related_stems_excludes_self_and_caps():
     idx = _StubIndex(
         [
@@ -58,3 +65,17 @@ def test_related_stems_excludes_self_and_caps():
     )
     stems = related_stems(idx, "notes/A/self.md", "Self", "content", k=5)  # type: ignore[arg-type]
     assert stems == ["other", "third"]
+
+
+def test_related_stems_collapses_same_stem_across_categories():
+    # two related notes sharing a filename in different categories collapse to one link:
+    # an Obsidian `[[stem]]` resolves by basename, so they're indistinguishable anyway
+    idx = _StubIndex(
+        [
+            ("notes/A/Raft.md", 0.9),
+            ("notes/B/Raft.md", 0.8),  # same stem, different category
+            ("notes/C/Paxos.md", 0.7),
+        ]
+    )
+    stems = related_stems(idx, "notes/Z/Self.md", "Self", "content", k=5)  # type: ignore[arg-type]
+    assert stems == ["Raft", "Paxos"]

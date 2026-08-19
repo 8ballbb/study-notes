@@ -50,7 +50,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     login_p = sub.add_parser("login", help="log into a site for later paywalled fetches")
     login_p.add_argument("url", nargs="?")
-    return p.parse_args(argv)
+    ns = p.parse_args(argv)
+    if getattr(ns, "only", None) and getattr(ns, "dry_run", False):
+        p.error(
+            "--only cannot be combined with --dry-run (--only locates, confirms, and writes a slice)"
+        )
+    return ns
 
 
 def _make_index(config: Config):
@@ -111,9 +116,9 @@ def main(argv: list[str] | None = None) -> int:
             config=config, index=index, writer=VaultWriter(config, index), ask_fn=input
         )
         system_prompt = (
-            Path("prompts/refine.md").read_text()
+            Path(config.prompts["refine"]).read_text()
             + "\n\n"
-            + Path("prompts/anti-slop.md").read_text()
+            + Path(config.prompts["anti_slop"]).read_text()
         )
         opening = (
             f"Refine this note. Its vault path is: {ns.path}\n\n"
@@ -150,10 +155,10 @@ def main(argv: list[str] | None = None) -> int:
             ctx.ask_fn = input
             parts = [
                 Path(config.prompts["orchestrator"]).read_text(),
-                Path("prompts/interactive-capture.md").read_text(),
+                Path(config.prompts["interactive_capture"]).read_text(),
             ]
             if ns.only:
-                parts.append(Path("prompts/partial-capture.md").read_text())
+                parts.append(Path(config.prompts["partial_capture"]).read_text())
             system_prompt = "\n\n".join(parts)
             opts = build_interactive_options(
                 ctx,

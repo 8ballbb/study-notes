@@ -114,7 +114,12 @@ def _secs_to_hhmmss(seconds: float) -> str:
 
 
 def _segments_to_result(
-    url: str, video_id: str, title: str, upload_date: str | None, whisper_out: dict
+    url: str,
+    video_id: str,
+    title: str,
+    upload_date: str | None,
+    whisper_out: dict,
+    chapters: list[Chapter] | None = None,
 ) -> TranscriptResult:
     segs = [
         TranscriptSegment(start=_secs_to_hhmmss(s["start"]), text=s["text"].strip())
@@ -124,7 +129,12 @@ def _segments_to_result(
     if not segs:
         raise TranscriptUnavailable(url)
     return TranscriptResult(
-        url=url, video_id=video_id, title=title, upload_date=upload_date, segments=segs
+        url=url,
+        video_id=video_id,
+        title=title,
+        upload_date=upload_date,
+        segments=segs,
+        chapters=chapters or [],
     )
 
 
@@ -202,6 +212,7 @@ def fetch_youtube_transcript(
                         ainfo.get("title", ""),
                         _fmt_upload_date(ainfo.get("upload_date")),
                         out,
+                        _chapters_from_info(ainfo),
                     )
             except Exception as e:
                 logging.getLogger(__name__).warning("whisper fallback failed for %s: %s", url, e)

@@ -21,9 +21,12 @@ Medium → Freedium) while the note's source stays the ORIGINAL URL. Mirror doma
 ```bash
 make setup                                               # one-command setup (plan→confirm→run); or ./scripts/setup.sh
 make doctor                                              # read-only env check; make test / make db also exist
-uv pip install -e ".[dev]"                               # (manual install, if not using make setup)
+uv sync --group dev                                      # (manual install, if not using make setup)
 uv run playwright install chromium                       # for webpage ingestion
-uv run study-notes add <url|file> [--category C] [--note N] [--dry-run] [--force]
+uv run study-notes add <url|file> [--category C] [--note N] [--dry-run] [--force] [--interactive] [--only DESC]
+uv run study-notes query "<question>" [--category C] [--k N]   # read-only: answer from your vault, grounded + cited
+uv run study-notes refine <vault-relative-note-path>     # interactively improve an existing note from your feedback
+uv run study-notes link                                  # rebuild each note's managed '## Related' wikilink section
 uv run study-notes login <url>                            # one-time login for a paywalled site (opens a real browser)
 uv run study-notes reindex                               # rebuild search index + category MOCs from disk
 
@@ -72,7 +75,8 @@ It is bundled in the suite unless you exclude it — always add `and not e2e` fo
   (numpy/Pillow blur filter + dHash dedup + montage), `vault_write.py` (non-destructive writer +
   OKF frontmatter), `search.py`, `_ytdlp.py`.
 - `src/study_notes/` — `config.py`, `models.py`, `renderer.py`, `reindex.py`, `slop_check.py`,
-  `vault_index.py` (BGE-M3 + pgvector hybrid retrieval), `ingest.py` (dedup log).
+  `vault_index.py` (BGE-M3 + pgvector hybrid retrieval), `ingest.py` (dedup log),
+  `query.py` (read-only `query` synthesis), `linker.py` (`link` auto-wikilink pass).
 - `prompts/` — `orchestrator.md`, `note-writing.md` (structure **and** the Feynman-plain voice),
   `enrichment.md`, `anti-slop.md`. Editing these is how you change behavior; light content tests
   in `tests/test_agent_prompts.py` guard key phrases.

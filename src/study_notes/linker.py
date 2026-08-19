@@ -44,6 +44,9 @@ def related_stems(
     for hit_path, _score in hits:
         if hit_path == path:
             continue
+        # Dedup by basename: an Obsidian `[[stem]]` resolves by filename, so two related
+        # notes sharing a stem across categories are indistinguishable as links anyway —
+        # collapsing them to one is correct, not a dropped link.
         stem = Path(hit_path).stem
         if stem not in stems:
             stems.append(stem)

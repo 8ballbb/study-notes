@@ -143,8 +143,23 @@ uv run study-notes add https://youtu.be/<id> --note "Existing Note Title"
 # Preview the plan without writing anything
 uv run study-notes add https://youtu.be/<id> --dry-run
 
+# Plan interactively (ask questions, confirm each note before writing)
+uv run study-notes add https://youtu.be/<id> --interactive
+
+# Capture only one part of a source (locates it, confirms the range, then extracts)
+uv run study-notes add https://youtu.be/<id> --only "the section on backpressure"
+
 # Re-ingest something already seen
 uv run study-notes add https://youtu.be/<id> --force
+
+# Ask a question, answered from your vault notes (read-only, grounded + cited)
+uv run study-notes query "how does Raft handle leader election?" --k 8
+
+# Interactively improve an existing note from your feedback
+uv run study-notes refine "Notes/Distributed Systems/Raft.md"
+
+# Rebuild every note's managed '## Related' wikilink section, vault-wide
+uv run study-notes link
 
 # Rebuild the search index from the current vault
 uv run study-notes reindex
@@ -170,12 +185,17 @@ model = "BAAI/bge-m3"                   # local, dense + sparse, on MPS
 orchestrator = "claude-opus-4-8"       # decompose / judge / integrate
 extractor    = "claude-sonnet-5"       # per-topic note writing
 enricher     = "claude-sonnet-5"       # per-topic web research
+query        = "claude-opus-4-8"       # read-only synthesis for `query` (defaults to orchestrator)
 
 [prompts]                              # versioned, editable
 orchestrator = "prompts/orchestrator.md"
 note_writing = "prompts/note-writing.md"   # how notes are written — tune "how I learn" (and the voice) here
 enrichment   = "prompts/enrichment.md"
 anti_slop    = "prompts/anti-slop.md"       # bans AI-filler phrasing
+query               = "prompts/query.md"                 # read-only `query` synthesis
+refine              = "prompts/refine.md"                 # interactive `refine` session
+interactive_capture = "prompts/interactive-capture.md"   # `add --interactive`
+partial_capture     = "prompts/partial-capture.md"       # `add --only`
 
 [frames]
 budget = 4                             # candidate frames per visual moment (montage the model picks from)
@@ -246,7 +266,7 @@ specs and plans under [`docs/superpowers/`](docs/superpowers/).
 
 > **Occasional retry:** an ingest sometimes ends with `Claude Code returned an error result: success`
 > — a transient SDK teardown error, not a failed ingest. Re-run it; a failed *real* run isn't recorded,
-> so the retry proceeds fresh. (Tracked in `CLAUDE.md` → Known issues.)
+> so the retry proceeds fresh.
 
 ## Roadmap
 
