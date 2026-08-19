@@ -30,7 +30,7 @@ uv run study-notes link                                  # rebuild each note's m
 uv run study-notes login <url>                            # one-time login for a paywalled site (opens a real browser)
 uv run study-notes reindex                               # rebuild search index + category MOCs from disk
 
-uv run pytest -m "not slow and not docker and not e2e and not network"   # fast, TOKEN-FREE suite (~3.5s) — use this
+uv run pytest -m "not slow and not docker and not e2e and not browser and not network"   # fast, TOKEN-FREE suite (~3.5s) — use this
 uv run pytest -m docker                                  # frame tests (needs a Docker daemon + jrottenberg/ffmpeg:6.1-alpine)
 uv run pytest -m e2e                                     # live agentic ingest — SLOW + SPENDS CLAUDE TOKENS
 ```
@@ -120,7 +120,7 @@ specs + plans), `scripts/doctor.sh`, and git history are what port. On a fresh c
    unprompted). Either run the approved fixes yourself, or point them at **`make setup`**
    (`./scripts/setup.sh`) — it prints its plan, asks once, then installs/starts everything missing
    and re-runs the doctor. Re-run the doctor until everything is `[ok]`.
-4. Confirm with the token-free suite: `make test` (`uv run pytest -m "not slow and not docker and not e2e and not browser"`).
+4. Confirm with the token-free suite: `make test` (`uv run pytest -m "not slow and not docker and not e2e and not browser and not network"`).
 
 When you add a new prerequisite or service, **add a matching check to `scripts/doctor.sh`** (and, if
 it needs installing/starting, a step in `scripts/setup.sh`) so the

@@ -6,22 +6,14 @@ Future feature ideas and known follow-ups. Nothing here is blocking — the tool
 
 Rough priority: 🔴 worth doing soon · 🟡 nice to have · 🟢 someday / maybe.
 
-**Priority ordering (reviewed 2026-08-03).** A considered ranking of the features below; it
-supersedes the coarse 🔴/🟡/🟢 dots for planning. Logic: cheap retrieval and connection wins
-first, then capture quality for hard sources (a shared timed-segments cluster), then vault
-coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
-`feat/retrieval-and-capture`, pending merge.)
+**Priority ordering (reviewed 2026-08-19).** Remaining work, ranked. Items shipped since the 2026-08-03 review: Auto-link (`link` command), Partial/region capture (`--only`), Source-anchored claims (YouTube `?t=` deep-links), Reconcile-on-merge (fold-into-body) — all merged to master.
 
 1. **Contextual-prefix on embedded text**: near-free, sharpens all retrieval (query, placement, linking).
-2. **Auto-link notes into a knowledge graph**: the point of an Obsidian vault; reuses the index and improves as more notes are added.
-3. **Chapter-aware segmentation for long sources**: fixes the thin-summary collapse on 2-hour sources.
-4. **Partial / region capture**: NL-guided find-then-confirm (the standing 🔴).
-5. **Source-anchored claims (deep-linking)**: learning value, and unlocks a much better web viewer.
-6. **Reconcile-on-merge**: stop merged notes accreting into dated append-logs.
-7. **Source transparency & confidence**: cheap (mostly note-writing guide), core to a *learning* tool.
-8. **Batch & playlist ingestion**: real studying happens in batches; dedup already guards repeats.
-9. **More video hosts + podcasts**: near-free reach via the existing yt-dlp path and shipped Whisper fallback.
-10. **Content-type-aware capture templates**: lifts capture relevance; the safe, template-driven counterpart to `--inspired`.
+2. **Chapter-aware segmentation for long sources**: fixes the thin-summary collapse on 2-hour sources.
+3. **Source transparency & confidence**: cheap (mostly note-writing guide), core to a *learning* tool.
+4. **Batch & playlist ingestion**: real studying happens in batches; dedup already guards repeats.
+5. **More video hosts + podcasts**: near-free reach via the existing yt-dlp path and shipped Whisper fallback.
+6. **Content-type-aware capture templates**: lifts capture relevance; the safe, template-driven counterpart to `--inspired`.
 
 ---
 
@@ -46,13 +38,7 @@ coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
 
 ### Capture (getting better notes out of sources)
 
-- 🔴 **Partial / region capture — natural-language-guided, with a confirmation stage.** Capture only
-  part of a source. Crucially this is driven by the user's prompt in plain language ("just the part
-  about backpressure", "the second half"), **not** raw timestamps — so the flow must be:
-  user specifies → the LLM locates the matching span in the transcript/document → it **shows what it
-  found (range + a snippet) and asks the user to confirm or adjust** → only then extract. The
-  find-then-confirm handshake is the whole point; guessing silently would capture the wrong slice.
-  Reuses timed transcript segments; pairs with chapter segmentation below.
+- ~~🔴 **Partial / region capture** — shipped as `add --only`; see Done.~~
 - 🟡 **Multi-source synthesis into one note.** Point several sources at one topic and get **one**
   authoritative, reconciled note (citing each source), not N notes. Genuine synthesis means the model
   must *study all the sources and derive a structure from the content itself* rather than slot them
@@ -77,10 +63,7 @@ coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
   (YouTube chapters / headings / auto-segmentation) then assemble, so a 2-hour lecture keeps
   granularity instead of collapsing to a thin summary. Reuses the extractor per-segment; also
   underpins partial capture above.
-- 🟡 **Source-anchored claims (deep-linking).** Every claim links back to its exact origin — a
-  YouTube `&t=` timestamp, PDF page, or article paragraph — for one-click verify/re-watch. Only
-  frames carry a timestamp today. Reuses timed transcript segments; makes a web viewer materially
-  better than plain Obsidian.
+- ~~🟡 **Source-anchored claims** — shipped; YouTube `?t=` deep-links on every key claim; see Done.~~
 - 🟡 **A structured technical-document pipeline (papers / slides / repos).** A genuinely *new*
   pipeline, not just another `yt-dlp` host: structure-aware ingestion for academic PDFs/arXiv
   (sections, equations→LaTeX, tables→Markdown, references), slide decks (`.pptx`/Google Slides), and
@@ -95,11 +78,11 @@ coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
 ### Other
 
 - 🟡 **Contextual-prefix on embedded text (Anthropic Contextual Retrieval).** Prepend a one-line frame ("part of {source}, covering {scope}") to the text we *embed* — not the displayed note — so an isolated note keeps its parent-document context and retrieval sharpens. The extractor already holds this context when it writes each note, so it's nearly free. Anthropic reports 35–49% retrieval-failure reduction, and the LLM-Wiki pattern in CLAUDE.md already endorses the approach. *(claude-obsidian applies this at ingest via `contextual-prefix.py`.)*
-- 🟡 **Auto-link notes into a knowledge graph.** Notes sit siloed in category folders; the payoff of Obsidian is connections. Use the existing BGE-M3 + hybrid index — at write time and as a `study-notes link` pass — to insert `[[wikilinks]]` to genuinely related existing notes, **including across categories** (unlike the placement search, which is deliberately category-scoped). Compounds in value as the vault grows. *High leverage, reuses infrastructure already built.*
+- ~~🟡 **Auto-link notes into a knowledge graph** — shipped as `study-notes link`; see Done.~~
 - 🟡 **Ingest more than YouTube — more video hosts & podcasts.** Web articles (Playwright render + `trafilatura`) and local files (text/Markdown/PDF, pandoc for `.docx`) already ingest, and `resolve_source` is already source-type-aware — so "study anything you read, watch, or listen to" is mostly real. Remaining: more `yt-dlp` *video* hosts (TikTok, Vimeo, X, Instagram — nearly free to enable) and podcasts/audio (→ transcript, reusing the local-Whisper fallback that already shipped).
 - 🟡 **Combine notes — merge a chosen list into one larger note.** Provide a list of existing notes (e.g. several related status-code notes) and have them synthesised into a single coherent note, keeping each source's provenance and de-duplicating overlap. Also **iterative** — Claude confirms which notes, proposes an outline for the combined note, and asks you to agree before writing; originals are kept (or archived) non-destructively. Distinct from **Multi-source synthesis** above (that combines input *sources* into one note; this combines already-written *notes* on your explicit say-so) and from **Cross-source topic de-duplication** (automatic; this is user-driven).
 - 🟡 **Batch & playlist ingestion — a study queue.** Feed a list of URLs, a YouTube playlist, or a watch-later file and process them all (dedup already prevents repeats). Real studying happens in batches. *Small for a URL list; medium for playlist expansion + progress.*
-- 🟡 **Reconcile-on-merge — integrate updates, don't just append.** Merging into an existing note currently appends a dated `## Update` section, so notes accrete into append-logs. Have an extractor *rewrite* the note to fold new material into the body (keeping provenance) so notes stay coherent and current. *Vault-coherence cluster with Temporal conflict handling (Deferred) and Cross-source topic de-duplication.*
+- ~~🟡 **Reconcile-on-merge** — shipped; merges fold into the note body via `rewrite_note`, no dated append-log; see Done.~~
 - 🟡 **Cross-source topic de-duplication.** Dedup is whole-source only, so two different videos on the same concept still create two notes on e.g. "HTTP 429". Use the hybrid index at write time to detect *topic-level* overlap and merge into one authoritative note. The hard part is judging "same topic vs. merely related". *Prevents a vault built from overlapping sources filling with redundant notes.* *Diagnostic complement: Near-duplicate note detection under Maintenance & polish.*
 - 🟡 **Source transparency & confidence in notes.** Source-derived material and researched additions blur together, and nothing signals model uncertainty. Structure each note so the source-derived core, the "verified additions / further reading" (enrichment), and any low-confidence claims are distinguishable. *For a learning tool, knowing what's solid vs. inferred vs. externally-sourced is part of learning it correctly. Mostly a note-writing-guide + enrichment-integration change.*
 - 🟡 **Learning-path / prerequisite ordering.** Notes in a category are an unordered set. Detect dependencies ("understand status-code families before the specific codes") and generate a suggested path — a `study-notes path <category>` or an ordering in the category index note. *Turns a pile of notes into a curriculum.*
@@ -118,6 +101,10 @@ coherence and note trustworthiness, then reach. (Items 1–4 are implemented on
 
 _(Move shipped items here, newest first.)_
 
+- ✅ Reconcile-on-merge — merges fold new material into the note body via `rewrite_note`; no dated `## Update` append-log — 2026-08-19
+- ✅ Source-anchored claims — YouTube `?t=` deep-links on every key claim; graceful no-anchor fallback for webpage/file — 2026-08-19
+- ✅ Partial / region capture (`add --only`) — NL-guided locate → confirm handshake → extract — 2026-08-03
+- ✅ Auto-link notes into a knowledge graph (`study-notes link`) — managed `## Related` wikilink section rebuilt vault-wide — 2026-08-03
 - ✅ Read-only `query` command — cross-category hybrid retrieval + grounded, cited answer — 2026-08-03
 - ✅ Iterative capture (`add --interactive`) — proposes a plan, asks via `ask_user`, per-write approval hook — 2026-08-03
 - ✅ Interactive note refinement (`refine <path>`) — feedback → propose → approve → lossless in-place rewrite — 2026-08-03
