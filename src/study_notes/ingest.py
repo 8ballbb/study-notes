@@ -34,18 +34,23 @@ def webpage_source_id(url: str) -> str:
     if path.endswith("/") and path != "/":
         path = path[:-1]
 
-    query = urlencode([
-        (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
-        if not k.lower().startswith("utm_") and k.lower() not in _TRACKING_PARAMS
-    ])
+    query = urlencode(
+        [
+            (k, v)
+            for k, v in parse_qsl(parts.query, keep_blank_values=True)
+            if not k.lower().startswith("utm_") and k.lower() not in _TRACKING_PARAMS
+        ]
+    )
 
-    normalized = urlunsplit((
-        parts.scheme.lower(),
-        parts.netloc.lower(),
-        path,
-        query,
-        "",  # drop fragment
-    ))
+    normalized = urlunsplit(
+        (
+            parts.scheme.lower(),
+            parts.netloc.lower(),
+            path,
+            query,
+            "",  # drop fragment
+        )
+    )
     return f"url:{normalized}"
 
 
@@ -79,11 +84,11 @@ class IngestLog:
             row = cur.fetchone()
         if row is None:
             return None
-        return IngestRecord(source_id=row[0], source_type=row[1],
-                            origin=row[2], note_paths=list(row[3]))
+        return IngestRecord(
+            source_id=row[0], source_type=row[1], origin=row[2], note_paths=list(row[3])
+        )
 
-    def record(self, source_id: str, source_type: str, origin: str,
-               note_paths: list[str]) -> None:
+    def record(self, source_id: str, source_type: str, origin: str, note_paths: list[str]) -> None:
         with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO sources (source_id, source_type, origin, note_paths) "

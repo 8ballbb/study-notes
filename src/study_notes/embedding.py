@@ -5,8 +5,7 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class Embedder(Protocol):
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        ...
+    def embed(self, texts: list[str]) -> list[list[float]]: ...
 
 
 class FakeEmbedder:
@@ -41,6 +40,5 @@ class BGEM3Embedder:
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         model = self._load()
-        out = model.encode(texts, return_dense=True,
-                           return_sparse=False, return_colbert_vecs=False)
+        out = model.encode(texts, return_dense=True, return_sparse=False, return_colbert_vecs=False)
         return [list(map(float, v)) for v in out["dense_vecs"]]

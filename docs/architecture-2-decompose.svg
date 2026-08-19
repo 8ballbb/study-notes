@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="908" height="488" viewBox="-114.0 496.0 908.0 488.0" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L9,3 L0,6 z" fill="#1e1e1e"/></marker></defs>
+<rect x="-114.0" y="496.0" width="908.0" height="488.0" fill="#ffffff"/>
+<rect x="310.0" y="520.0" width="460.0" height="70.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<rect x="310.0" y="630.0" width="460.0" height="70.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<polygon points="540.0,750.0 670.0,800.0 540.0,850.0 410.0,800.0" stroke="#1e1e2e" stroke-width="2" fill="#fff3bf"/>
+<rect x="-90.0" y="760.0" width="280.0" height="65.0" rx="8" stroke="#1e1e2e" stroke-width="2" fill="#e7f5ff"/>
+<ellipse cx="540.0" cy="930.0" rx="170.0" ry="30.0" stroke="#1e1e2e" stroke-width="2" fill="#d3f9d8"/>
+<polyline points="540.0,590.0 540.0,630.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="540.0,700.0 540.0,750.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="410.0,798.0 190.0,794.6" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="540.0,850.0 540.0,900.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="165.8,825.0 433.1,900.0" fill="none" stroke="#1e1e2e" stroke-width="2" marker-end="url(#ah)"/>
+<text x="540.0" y="553.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">decompose into topics</tspan>
+<tspan x="540.0" dy="17.5">title + start/end window; drop sponsor / intro</tspan>
+</text>
+<text x="540.0" y="663.6" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">resolve placement per topic</tspan>
+<tspan x="540.0" dy="17.5">list_categories + vault_search → new note or merge</tspan>
+</text>
+<text x="540.0" y="798.8" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">video source,</tspan>
+<tspan x="540.0" dy="15.0">visual enough</tspan>
+<tspan x="540.0" dy="15.0">for frames?</tspan>
+</text>
+<text x="50.0" y="791.1" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="50.0" dy="0">prepare_video once</tspan>
+<tspan x="50.0" dy="17.5">≤480p, shared by workers</tspan>
+</text>
+<text x="540.0" y="928.8" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">dispatch each topic</tspan>
+<tspan x="540.0" dy="15.0">in parallel</tspan>
+</text>
+<text x="300.0" y="796.3" font-size="12" fill="#1e1e2e" text-anchor="middle">
+<tspan x="300.0" dy="0">yes</tspan>
+</text>
+<text x="540.0" y="875.0" font-size="12" fill="#1e1e2e" text-anchor="middle">
+<tspan x="540.0" dy="0">no / not video</tspan>
+</text>
+</svg>

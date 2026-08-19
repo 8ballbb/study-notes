@@ -100,9 +100,7 @@ async def test_fetch_webpage_renders_local_fixture_via_playwright():
     file_url = FIXTURE.resolve().as_uri()
 
     with tempfile.TemporaryDirectory() as profile_dir:
-        result = await fetch_webpage(
-            file_url, profile_dir=profile_dir, timeout_ms=30_000
-        )
+        result = await fetch_webpage(file_url, profile_dir=profile_dir, timeout_ms=30_000)
 
     assert isinstance(result, WebpageResult)
     assert "Why Sourdough Starters Fail in Winter" in result.title
@@ -111,35 +109,42 @@ async def test_fetch_webpage_renders_local_fixture_via_playwright():
 
 # --- paywall mirror routing -------------------------------------------------
 
-_FREEDIUM = [{"hosts": ["medium.com", "towardsdatascience.com"], "via": "https://freedium-mirror.cfd/{url}"}]
+_FREEDIUM = [
+    {"hosts": ["medium.com", "towardsdatascience.com"], "via": "https://freedium-mirror.cfd/{url}"}
+]
 
 
 def test_rewrite_routes_medium_through_freedium():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     u = "https://medium.com/@GaoDalie_AI/some-article-713a9cf2e985"
     assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_matches_subdomains():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     u = "https://gaodalie.medium.com/post-xyz"
     assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_matches_listed_custom_domain():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     u = "https://towardsdatascience.com/deep-thing-123"
     assert rewrite_for_paywall(u, _FREEDIUM) == "https://freedium-mirror.cfd/" + u
 
 
 def test_rewrite_leaves_unmatched_host_unchanged():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     u = "https://example.com/article"
     assert rewrite_for_paywall(u, _FREEDIUM) == u
 
 
 def test_rewrite_no_substring_false_match():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     # notmedium.com must NOT match the "medium.com" host rule
     u = "https://notmedium.com/x"
     assert rewrite_for_paywall(u, _FREEDIUM) == u
@@ -147,11 +152,13 @@ def test_rewrite_no_substring_false_match():
 
 def test_rewrite_no_rules_is_identity():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     assert rewrite_for_paywall("https://medium.com/x", []) == "https://medium.com/x"
 
 
 def test_rewrite_archive_rule_for_news():
     from study_notes.tools.webpage import rewrite_for_paywall
+
     rules = [{"hosts": ["nytimes.com"], "via": "https://archive.ph/newest/{url}"}]
     u = "https://www.nytimes.com/2026/01/01/tech/story.html"
     assert rewrite_for_paywall(u, rules) == "https://archive.ph/newest/" + u

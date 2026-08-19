@@ -9,8 +9,9 @@ pytestmark = pytest.mark.integration
 
 
 def _note(path, title, category, content):
-    prov = Provenance(origin="src", input_type="markdown",
-                      captured_at=date(2026, 7, 26), source_date=None)
+    prov = Provenance(
+        origin="src", input_type="markdown", captured_at=date(2026, 7, 26), source_date=None
+    )
     return Note(path=path, title=title, category=category, content=content, provenance=prov)
 
 
@@ -32,19 +33,68 @@ def test_find_related_is_category_scoped(db_conn):
     idx = _index(db_conn)
     idx.upsert_category("Distributed Systems")
     idx.upsert_category("Biology")
-    idx.upsert_note(_note("ds/raft.md", "Raft", "Distributed Systems",
-                          "leader election consensus term log replication"))
-    idx.upsert_note(_note("ds/paxos.md", "Paxos", "Distributed Systems",
-                          "consensus quorum proposals"))
-    idx.upsert_note(_note("bio/mitosis.md", "Mitosis", "Biology",
-                          "consensus is also a word about cells dividing"))
+    idx.upsert_note(
+        _note(
+            "ds/raft.md",
+            "Raft",
+            "Distributed Systems",
+            "leader election consensus term log replication",
+        )
+    )
+    idx.upsert_note(
+        _note("ds/paxos.md", "Paxos", "Distributed Systems", "consensus quorum proposals")
+    )
+    idx.upsert_note(
+        _note(
+            "bio/mitosis.md", "Mitosis", "Biology", "consensus is also a word about cells dividing"
+        )
+    )
 
     results = idx.find_related("consensus algorithm", category="Distributed Systems", k=5)
     paths = [p for p, _ in results]
 
-    assert "bio/mitosis.md" not in paths          # never crosses categories
+    assert "bio/mitosis.md" not in paths  # never crosses categories
     assert all(p.startswith("ds/") for p in paths)
     assert len(paths) >= 1
+
+
+def test_find_related_all_categories(db_conn):
+    idx = _index(db_conn)
+    idx.upsert_category("Distributed Systems")
+    idx.upsert_category("Biology")
+    idx.upsert_note(
+        _note(
+            "ds/raft.md",
+            "Raft",
+            "Distributed Systems",
+            "leader election consensus term log replication",
+        )
+    )
+    idx.upsert_note(
+        _note(
+            "bio/mitosis.md", "Mitosis", "Biology", "consensus is also a word about cells dividing"
+        )
+    )
+
+    results = idx.find_related("consensus", category=None, k=5)
+    paths = {p for p, _ in results}
+
+    assert "ds/raft.md" in paths  # category=None crosses categories
+    assert "bio/mitosis.md" in paths
+
+
+def test_get_notes_returns_title_and_content(db_conn):
+    idx = _index(db_conn)
+    idx.upsert_category("Distributed Systems")
+    idx.upsert_note(_note("ds/raft.md", "Raft", "Distributed Systems", "leader election"))
+    idx.upsert_note(_note("ds/paxos.md", "Paxos", "Distributed Systems", "quorum proposals"))
+
+    got = idx.get_notes(["ds/raft.md", "ds/paxos.md", "ds/missing.md"])
+    by_path = {p: (t, c) for p, t, c in got}
+
+    assert by_path["ds/raft.md"] == ("Raft", "leader election")
+    assert by_path["ds/paxos.md"] == ("Paxos", "quorum proposals")
+    assert "ds/missing.md" not in by_path  # missing paths simply absent
 
 
 def test_upsert_note_updates_in_place(db_conn):

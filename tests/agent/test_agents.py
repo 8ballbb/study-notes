@@ -1,17 +1,24 @@
-from pathlib import Path
-
 from study_notes.config import Config
 
 
 def _cfg(tmp_path):
-    nw = tmp_path / "nw.md"; nw.write_text("NOTE-WRITING")
-    en = tmp_path / "en.md"; en.write_text("ENRICH")
-    sl = tmp_path / "slop.md"; sl.write_text("ANTISLOP")
-    return Config(vault_path=tmp_path, notes_root="r", attachments_dir="a",
-                  frames_subdir="frames", database_url="u", embedding_model="m",
-                  models={"extractor": "sonnet", "enricher": "haiku"},
-                  prompts={"note_writing": str(nw), "enrichment": str(en), "anti_slop": str(sl)},
-                  dry_run=False)
+    nw = tmp_path / "nw.md"
+    nw.write_text("NOTE-WRITING")
+    en = tmp_path / "en.md"
+    en.write_text("ENRICH")
+    sl = tmp_path / "slop.md"
+    sl.write_text("ANTISLOP")
+    return Config(
+        vault_path=tmp_path,
+        notes_root="r",
+        attachments_dir="a",
+        frames_subdir="frames",
+        database_url="u",
+        embedding_model="m",
+        models={"extractor": "sonnet", "enricher": "haiku"},
+        prompts={"note_writing": str(nw), "enrichment": str(en), "anti_slop": str(sl)},
+        dry_run=False,
+    )
 
 
 def test_build_agents_sets_models_and_prompts(tmp_path):

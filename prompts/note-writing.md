@@ -40,17 +40,20 @@ Work text-first, then target frames only where they add. Do NOT scan the whole w
 1. **Draft from the transcript first.** Write the teaching note from the text alone before
    touching any video.
 2. **Find the visual-cue moments.** Re-scan your timestamped transcript for the specific points
-   where a visual would genuinely add — an on-screen diagram/graph/slide/formula/code/animation,
-   or deixis ("as you see here", "this graph", "on the left", "notice that"). Collect each cue's
-   timestamp. If there are none, usually extract nothing (but see the backstop).
+   where a visual would genuinely add — either a named or described on-screen artifact
+   (diagram/graph/slide/formula/code/animation) OR verbal deixis ("as you see here", "this graph",
+   "on the left", "notice that"). A named on-screen artifact counts even when the narrator does not
+   verbally point at it. Collect each cue's timestamp. If you find none, go to the backstop
+   (step 5) rather than extracting nothing.
 3. **Extract only around each cue (narrow windows).** For each cue, call
    `select_keyframes(video_path, start, end, budget)` on a TIGHT window using transcript segment
    timestamps verbatim. It returns `candidates` (each with an `index`) and a `montage_path`.
 4. **Pick from the montage.** `Read` the single `montage_path` image — a numbered grid of the
    candidates. Compare them and choose the one (rarely two) index that best shows the finished
    diagram/slide. Prefer a clean, settled frame.
-5. **Backstop (only if told the topic is strongly visual)** and step-2 found no cues: take one
-   light sample across the window the same way.
+5. **Backstop (you were given a `video_path`, so the source is visual).** If step-2 found no cues
+   but your topic clearly involved on-screen material, take one light sample across the window the
+   same way rather than extracting nothing.
 6. **Keep and transcribe.** For each chosen index, `keep_frame(candidate_path, prefix, timestamp,
    video_id)` (pass the `video_id` you were given) and embed with `![[<embed_path>]]`. Transcribe
    the frame's useful on-screen content INTO the note text so it stands alone; discard the rest.

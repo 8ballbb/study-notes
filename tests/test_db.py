@@ -16,8 +16,10 @@ def test_apply_schema_is_idempotent(db_conn):
 
 def test_insert_note_row(db_conn):
     with db_conn.cursor() as cur:
-        cur.execute("INSERT INTO categories (name, description) VALUES (%s, %s);",
-                    ("Distributed Systems", "d"))
+        cur.execute(
+            "INSERT INTO categories (name, description) VALUES (%s, %s);",
+            ("Distributed Systems", "d"),
+        )
         cur.execute(
             "INSERT INTO notes (path, title, category, content, captured_at) "
             "VALUES (%s, %s, %s, %s, %s);",

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup doctor db test test-browser
+.PHONY: help setup doctor db test test-browser lint typecheck
 
 help: ## Show the available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -19,3 +19,9 @@ test: ## Run the fast, token-free test suite (no e2e, no browser, no Docker)
 
 test-browser: ## Run the Playwright browser tests (needs `playwright install chromium`)
 	uv run pytest -m browser
+
+lint: ## Lint and auto-fix with ruff
+	uv run ruff check --fix src/ tests/
+
+typecheck: ## Type-check with mypy
+	uv run mypy src/

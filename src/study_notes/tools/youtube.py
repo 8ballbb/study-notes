@@ -1,10 +1,10 @@
 import logging
 import re
-from dataclasses import dataclass
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
 
-_CUE_TIME = re.compile(
-    r"(\d{2}:\d{2}:\d{2})\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}"
-)
+_CUE_TIME = re.compile(r"(\d{2}:\d{2}:\d{2})\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}")
 _TAG = re.compile(r"<[^>]+>")
 
 
@@ -15,12 +15,20 @@ class TranscriptSegment:
 
 
 @dataclass
+class Chapter:
+    title: str
+    start: str  # "HH:MM:SS"
+    end: str  # "HH:MM:SS"
+
+
+@dataclass
 class TranscriptResult:
     url: str
     video_id: str
     title: str
     upload_date: str | None  # "YYYY-MM-DD"
     segments: list["TranscriptSegment"]
+    chapters: list["Chapter"] = field(default_factory=list)
 
 
 def parse_vtt(text: str) -> list[TranscriptSegment]:
@@ -46,10 +54,6 @@ def parse_vtt(text: str) -> list[TranscriptSegment]:
     return segments
 
 
-import tempfile
-from pathlib import Path
-
-
 class TranscriptUnavailable(Exception):
     """No usable English captions were found for the video."""
 
@@ -58,6 +62,19 @@ def _fmt_upload_date(raw: str | None) -> str | None:
     if not raw or len(raw) != 8:
         return None
     return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
+def _chapters_from_info(info: dict) -> list[Chapter]:
+    """yt-dlp exposes `chapters` (start_time/end_time in seconds) when a video has them.
+    Normalize to the same HH:MM:SS format the transcript segments use."""
+    return [
+        Chapter(
+            title=c.get("title", ""),
+            start=_secs_to_hhmmss(c.get("start_time", 0.0)),
+            end=_secs_to_hhmmss(c.get("end_time", 0.0)),
+        )
+        for c in (info.get("chapters") or [])
+    ]
 
 
 def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
@@ -72,6 +89,7 @@ def _result_from_info(url: str, info: dict, vtt_path: Path) -> TranscriptResult:
         title=info.get("title", ""),
         upload_date=_fmt_upload_date(info.get("upload_date")),
         segments=segments,
+        chapters=_chapters_from_info(info),
     )
 
 
@@ -95,14 +113,29 @@ def _secs_to_hhmmss(seconds: float) -> str:
     return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
-def _segments_to_result(url: str, video_id: str, title: str,
-                        upload_date: str | None, whisper_out: dict) -> TranscriptResult:
-    segs = [TranscriptSegment(start=_secs_to_hhmmss(s["start"]), text=s["text"].strip())
-            for s in whisper_out.get("segments", []) if s.get("text", "").strip()]
+def _segments_to_result(
+    url: str,
+    video_id: str,
+    title: str,
+    upload_date: str | None,
+    whisper_out: dict,
+    chapters: list[Chapter] | None = None,
+) -> TranscriptResult:
+    segs = [
+        TranscriptSegment(start=_secs_to_hhmmss(s["start"]), text=s["text"].strip())
+        for s in whisper_out.get("segments", [])
+        if s.get("text", "").strip()
+    ]
     if not segs:
         raise TranscriptUnavailable(url)
-    return TranscriptResult(url=url, video_id=video_id, title=title,
-                            upload_date=upload_date, segments=segs)
+    return TranscriptResult(
+        url=url,
+        video_id=video_id,
+        title=title,
+        upload_date=upload_date,
+        segments=segs,
+        chapters=chapters or [],
+    )
 
 
 def transcribe_audio_local(wav_path: Path, model: str) -> dict:
@@ -113,23 +146,30 @@ def transcribe_audio_local(wav_path: Path, model: str) -> dict:
     return mlx_whisper.transcribe(audio, path_or_hf_repo=model)
 
 
-def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None,
-                            whisper_model: str | None = None) -> TranscriptResult:
+def fetch_youtube_transcript(
+    url: str, *, tmp_dir: Path | None = None, whisper_model: str | None = None
+) -> TranscriptResult:
     import yt_dlp
 
     from study_notes.tools._ytdlp import quiet_opts, stdout_to_stderr
 
-    ctx = tempfile.TemporaryDirectory() if tmp_dir is None else None
-    work = Path(tmp_dir) if tmp_dir is not None else Path(ctx.name)
+    if tmp_dir is not None:
+        ctx: tempfile.TemporaryDirectory[str] | None = None
+        work = Path(tmp_dir)
+    else:
+        ctx = tempfile.TemporaryDirectory()
+        work = Path(ctx.name)
     try:
-        opts = quiet_opts({
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": ["en", "en-US", "en-orig"],
-            "subtitlesformat": "vtt",
-            "skip_download": True,
-            "outtmpl": str(work / "%(id)s.%(ext)s"),
-        })
+        opts = quiet_opts(
+            {
+                "writesubtitles": True,
+                "writeautomaticsub": True,
+                "subtitleslangs": ["en", "en-US", "en-orig"],
+                "subtitlesformat": "vtt",
+                "skip_download": True,
+                "outtmpl": str(work / "%(id)s.%(ext)s"),
+            }
+        )
         with stdout_to_stderr(), yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
         vid = info.get("id", "")
@@ -141,22 +181,41 @@ def fetch_youtube_transcript(url: str, *, tmp_dir: Path | None = None,
             # degrades gracefully to TranscriptUnavailable.
             try:
                 from study_notes.tools.frames import _docker_ffmpeg
-                aopts = quiet_opts({"format": "bestaudio/best",
-                                    "outtmpl": str(work / "%(id)s.%(ext)s")})
+
+                aopts = quiet_opts(
+                    {"format": "bestaudio/best", "outtmpl": str(work / "%(id)s.%(ext)s")}
+                )
                 with stdout_to_stderr(), yt_dlp.YoutubeDL(aopts) as ydl:
                     ainfo = ydl.extract_info(url, download=True)
                 aid = ainfo.get("id", "")
                 src = sorted(work.glob(f"{aid}*")) if aid else []
                 if src:
                     wav = work / "audio16k.wav"
-                    _docker_ffmpeg(work, ["-i", f"/work/{src[0].name}", "-vn", "-ac", "1",
-                                          "-ar", "16000", f"/work/{wav.name}", "-y"])
+                    _docker_ffmpeg(
+                        work,
+                        [
+                            "-i",
+                            f"/work/{src[0].name}",
+                            "-vn",
+                            "-ac",
+                            "1",
+                            "-ar",
+                            "16000",
+                            f"/work/{wav.name}",
+                            "-y",
+                        ],
+                    )
                     out = transcribe_audio_local(wav, whisper_model)
-                    return _segments_to_result(url, aid, ainfo.get("title", ""),
-                                               _fmt_upload_date(ainfo.get("upload_date")), out)
+                    return _segments_to_result(
+                        url,
+                        aid,
+                        ainfo.get("title", ""),
+                        _fmt_upload_date(ainfo.get("upload_date")),
+                        out,
+                        _chapters_from_info(ainfo),
+                    )
             except Exception as e:
-                logging.getLogger(__name__).warning(
-                    "whisper fallback failed for %s: %s", url, e)
+                logging.getLogger(__name__).warning("whisper fallback failed for %s: %s", url, e)
         raise TranscriptUnavailable(url)
     finally:
         if ctx is not None:

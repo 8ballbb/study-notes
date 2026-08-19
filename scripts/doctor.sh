@@ -30,9 +30,8 @@ echo
 echo "Prerequisites"
 req "Homebrew"                "command -v brew"    "install from https://brew.sh"
 req "uv (Python package manager)" "command -v uv"  "brew install uv"
-req "Colima (Docker runtime, no Docker Desktop needed)" "command -v colima" "brew install colima docker docker-compose"
 req "Docker CLI"              "command -v docker"  "brew install docker"
-req "Docker daemon running"   "docker info"        "colima start"
+req "Docker daemon (Colima / Rancher Desktop / Docker Desktop)" "docker info" "start your Docker runtime, e.g. 'colima start' or launch Rancher Desktop"
 
 echo
 echo "Services (Docker)"
@@ -42,11 +41,11 @@ req "ffmpeg image (frame extraction)"     "docker image inspect jrottenberg/ffmp
 
 echo
 echo "Python app"
-req "venv + dependencies (import study_notes)" "uv run python -c 'import study_notes'" "uv venv && uv pip install -e '.[dev]'"
+req "venv + dependencies (import study_notes)" "uv run python -c 'import study_notes'" "uv sync --group dev"
 
 echo
 echo "Webpage ingestion"
-req "Playwright package"     "uv run python -c 'import playwright'"     "uv pip install -e '.[dev]' (or uv sync --extra dev)"
+req "Playwright package"     "uv run python -c 'import playwright'"     "uv sync --group dev"
 req "trafilatura package"    "uv run python -c 'import trafilatura'"    "uv pip install -e ."
 opt "Playwright Chromium (for webpage ingestion)" "test -d \"$HOME/Library/Caches/ms-playwright\"" "uv run playwright install chromium"
 
@@ -58,13 +57,21 @@ else
   printf '  [MISS] config.toml present\n           fix: create config.toml at the repo root (see README "Configuration")\n'; fail=$((fail + 1))
 fi
 vault="$(sed -nE 's/^[[:space:]]*vault_path[[:space:]]*=[[:space:]]*"?([^"]*)"?.*/\1/p' config.toml 2>/dev/null | head -1)"
-if [ -n "$vault" ] && [ -d "$vault" ] && [ "${vault#"$HOME"}" != "$vault" ]; then
-  printf '  [ok]   vault_path set, exists, and under $HOME (%s)\n' "$vault"; pass=$((pass + 1))
-else
-  printf '  [MISS] vault_path set, exists, and under $HOME\n'
-  printf '           fix: set vault_path in config.toml to an existing folder under $HOME\n'
-  printf '                (Colima only bind-mounts $HOME); e.g. mkdir -p "$HOME/vault"\n'
+vault="${vault/#\~/$HOME}"
+if [ -z "$vault" ] || [ "$vault" = "REPLACE_ME" ]; then
+  printf '  [MISS] vault_path is still the REPLACE_ME placeholder\n'
+  printf '           fix: set vault_path in config.toml to your Obsidian vault (absolute, or relative to config.toml; must resolve under $HOME)\n'
   fail=$((fail + 1))
+else
+  case "$vault" in /*) ;; *) vault="$PWD/$vault" ;; esac  # relative -> resolve against repo root (config.toml lives here)
+  if [ -d "$vault" ] && [ "${vault#"$HOME"}" != "$vault" ]; then
+    printf '  [ok]   vault_path set, exists, and under $HOME (%s)\n' "$vault"; pass=$((pass + 1))
+  else
+    printf '  [MISS] vault_path set, exists, and under $HOME\n'
+    printf '           fix: set vault_path in config.toml to an existing folder under $HOME\n'
+    printf '                (the Docker VM only bind-mounts $HOME); e.g. mkdir -p "$HOME/vault"\n'
+    fail=$((fail + 1))
+  fi
 fi
 
 echo

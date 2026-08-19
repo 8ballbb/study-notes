@@ -2,7 +2,6 @@ import os
 
 import pytest
 
-
 TEST_DB_URL = os.environ.get(
     "STUDY_NOTES_TEST_DB",
     "postgresql://postgres:postgres@localhost:5432/study_notes_test",

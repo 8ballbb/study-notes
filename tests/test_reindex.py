@@ -22,14 +22,23 @@ supersedes: []
 
 def _cfg(tmp_path):
     from study_notes.config import Config
-    return Config(vault_path=tmp_path, notes_root="Notes",
-                  attachments_dir="Attachments", frames_subdir="frames",
-                  database_url="unused", embedding_model="fake",
-                  models={}, prompts={}, dry_run=False)
+
+    return Config(
+        vault_path=tmp_path,
+        notes_root="Notes",
+        attachments_dir="Attachments",
+        frames_subdir="frames",
+        database_url="unused",
+        embedding_model="fake",
+        models={},
+        prompts={},
+        dry_run=False,
+    )
 
 
 def test_parse_frontmatter_reads_keys():
     from study_notes.reindex import parse_frontmatter
+
     fm = parse_frontmatter(NOTE)
     assert fm["title"] == "Raft"
     assert fm["category"] == "Distributed Systems"
@@ -58,19 +67,22 @@ def test_reindex_reads_okf_field_names(db_conn, tmp_path):
     # Notes written with OKF field names (resource/timestamp/type) must reindex
     # cleanly, not just the pre-OKF source/captured_at names.
     from study_notes.reindex import reindex
+
     cat = tmp_path / "Notes" / "Distributed Systems"
     cat.mkdir(parents=True)
     (cat / "Paxos.md").write_text(OKF_NOTE)
     index = VaultIndex(db_conn, FakeEmbedder())
     count = reindex(_cfg(tmp_path), index)
     assert count == 1
-    hits = index.find_related("agreement among unreliable nodes",
-                              category="Distributed Systems", k=5)
+    hits = index.find_related(
+        "agreement among unreliable nodes", category="Distributed Systems", k=5
+    )
     assert any("Paxos" in p for p, _ in hits)
 
 
 def test_reindex_upserts_notes_and_skips_moc(db_conn, tmp_path):
     from study_notes.reindex import reindex
+
     cat = tmp_path / "Notes" / "Distributed Systems"
     cat.mkdir(parents=True)
     (cat / "Raft.md").write_text(NOTE)
@@ -85,18 +97,20 @@ def test_reindex_upserts_notes_and_skips_moc(db_conn, tmp_path):
 
 def test_reindex_rebuilds_moc_pruning_stale_links(db_conn, tmp_path):
     from study_notes.reindex import reindex
+
     cat = tmp_path / "Notes" / "Distributed Systems"
     cat.mkdir(parents=True)
     (cat / "Raft.md").write_text(NOTE)
     # MOC with a description to preserve + a stale link to a note that no longer exists
     (cat / "Distributed Systems.md").write_text(
         '---\ntype: moc\ncategory: Distributed Systems\ndescription: "consensus algorithms"\n'
-        '---\n\n# Distributed Systems\n\n## Notes\n- [[OldGhost]]\n- [[Raft]]\n')
+        "---\n\n# Distributed Systems\n\n## Notes\n- [[OldGhost]]\n- [[Raft]]\n"
+    )
 
     reindex(_cfg(tmp_path), VaultIndex(db_conn, FakeEmbedder()))
 
     moc = (cat / "Distributed Systems.md").read_text()
-    assert "[[Raft]]" in moc            # real note kept
-    assert "[[OldGhost]]" not in moc    # stale link pruned
+    assert "[[Raft]]" in moc  # real note kept
+    assert "[[OldGhost]]" not in moc  # stale link pruned
     assert "consensus algorithms" in moc  # description preserved
-    assert moc.count("[[Raft]]") == 1   # no duplication
+    assert moc.count("[[Raft]]") == 1  # no duplication

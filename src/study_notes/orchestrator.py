@@ -32,12 +32,10 @@ def resolve_source(raw: str) -> tuple[str, str, str]:
         pass
     if Path(raw).exists():
         return file_source_id(Path(raw)), "file", str(raw)
-    raise UnsupportedSourceError(
-        "not a YouTube URL, an http(s) URL, or an existing file: " + raw
-    )
+    raise UnsupportedSourceError("not a YouTube URL, an http(s) URL, or an existing file: " + raw)
 
 
-def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str:
+def _input_prompt(origin: str, source_type: str, category, note, dry_run, only=None) -> str:
     lines = [
         f"Ingest this {source_type} source into the vault following your procedure.",
         f"Source: {origin}",
@@ -47,23 +45,43 @@ def _input_prompt(origin: str, source_type: str, category, note, dry_run) -> str
         lines.append(f"Directive: force category = {category!r}.")
     if note:
         lines.append(f"Directive: merge into target_note = {note!r}.")
+    if only:
+        lines.append(
+            f"Directive: capture ONLY the region matching: {only!r}. Locate it in the source, "
+            "show the user the matched range and a short snippet, confirm or adjust with them via "
+            "ask_user, then extract only that slice — ignore the rest of the source."
+        )
     if dry_run:
         lines.append("This is a DRY RUN: do not call vault_write; report your plan.")
     return "\n".join(lines)
 
 
-def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: IngestLog,
-        run_engine, category=None, note=None,
-        dry_run: bool = False, force: bool = False) -> AddResult:
+def add(
+    raw_input: str,
+    *,
+    config: Config,
+    index: VaultIndex,
+    ingest_log: IngestLog,
+    run_engine,
+    category=None,
+    note=None,
+    dry_run: bool = False,
+    force: bool = False,
+    only=None,
+) -> AddResult:
     source_id, source_type, origin = resolve_source(raw_input)
 
     if not force:
         existing = ingest_log.lookup(source_id)
         if existing is not None:
-            return AddResult("skipped", source_id, existing.note_paths,
-                             f"already ingested as {existing.note_paths}")
+            return AddResult(
+                "skipped",
+                source_id,
+                existing.note_paths,
+                f"already ingested as {existing.note_paths}",
+            )
 
-    output = run_engine(_input_prompt(origin, source_type, category, note, dry_run))
+    output = run_engine(_input_prompt(origin, source_type, category, note, dry_run, only))
 
     if dry_run:
         return AddResult("dry_run", source_id, [], output or "dry run — nothing written")
@@ -71,10 +89,11 @@ def add(raw_input: str, *, config: Config, index: VaultIndex, ingest_log: Ingest
     note_paths = index.paths_for_source(origin)
     if not note_paths:
         return AddResult(
-            "failed", source_id, [],
+            "failed",
+            source_id,
+            [],
             "no note was written — the source may need `study-notes login` first, or the fetch/agent run failed. "
             "Nothing was recorded; re-run to retry.",
         )
     ingest_log.record(source_id, source_type, origin, note_paths)
-    return AddResult("ingested", source_id, note_paths,
-                     f"ingested {len(note_paths)} note(s)")
+    return AddResult("ingested", source_id, note_paths, f"ingested {len(note_paths)} note(s)")

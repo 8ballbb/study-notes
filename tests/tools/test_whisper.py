@@ -2,8 +2,12 @@ from study_notes.tools.youtube import TranscriptResult, _segments_to_result
 
 
 def test_segments_to_result_maps_seconds_to_hhmmss():
-    out = {"segments": [{"start": 0.0, "end": 2.0, "text": "hello"},
-                        {"start": 83.5, "end": 86.0, "text": "world"}]}
+    out = {
+        "segments": [
+            {"start": 0.0, "end": 2.0, "text": "hello"},
+            {"start": 83.5, "end": 86.0, "text": "world"},
+        ]
+    }
     r = _segments_to_result("u", "vid", "T", "2025-11-14", out)
     assert isinstance(r, TranscriptResult)
     assert r.segments[0].start == "00:00:00" and r.segments[0].text == "hello"
@@ -15,5 +19,6 @@ def test_segments_to_result_empty_raises():
     import pytest
 
     from study_notes.tools.youtube import TranscriptUnavailable
+
     with pytest.raises(TranscriptUnavailable):
         _segments_to_result("u", "v", "T", None, {"segments": []})

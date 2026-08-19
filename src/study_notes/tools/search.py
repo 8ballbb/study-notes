@@ -9,5 +9,4 @@ def vault_search(index: VaultIndex, query: str, category: str, k: int = 5) -> li
 
 
 def list_categories(index: VaultIndex) -> list[dict]:
-    return [{"name": c.name, "description": c.description}
-            for c in index.list_categories()]
+    return [{"name": c.name, "description": c.description} for c in index.list_categories()]

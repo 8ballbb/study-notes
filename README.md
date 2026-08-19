@@ -39,63 +39,42 @@ Everything lands as Markdown in your vault, indexed for semantic search.
 
 ## How it works
 
-A single agentic run, structured as an **orchestrator with workers**:
+A single agentic run, structured as an **orchestrator with workers**. The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel, so a multi-topic source doesn't crawl through one long sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
 
-```mermaid
-flowchart TB
-    CLI["study-notes add &lt;url / file&gt;"] --> DEDUP{"already ingested?"}
-    DEDUP -->|yes| SKIP([skip])
-    DEDUP -->|no| KIND{"source type"}
-    KIND -->|"YouTube URL"| YT["fetch_youtube_transcript<br/>captions, else local Whisper"]
-    KIND -->|"webpage URL"| WEBPAGE["fetch_webpage<br/>Playwright render (logged-in) → trafilatura"]
-    KIND -->|"local file"| DOC["read the file directly<br/>Read: text / Markdown / PDF (pandoc for .docx)"]
+The pipeline runs in four stages.
 
-    YT --> SPLIT["decompose into topics<br/>title + start/end window; drop sponsor / intro"]
-    WEBPAGE --> SPLIT
-    DOC --> SPLIT
+### 1. Ingest and route
 
-    SPLIT --> PLACE["resolve placement per topic<br/>list_categories, vault_search → new note or merge"]
-    PLACE --> GATE{"video source,<br/>visual enough for frames?"}
+![Ingest and route](docs/architecture-1-ingest.svg)
 
-    PREP["prepare_video once<br/>≤480p, shared by workers"]
-    DISPATCH(["dispatch each topic, in parallel"])
-    GATE -->|yes| PREP --> DISPATCH
-    GATE -->|"no / not a video"| DISPATCH
+`study-notes add` is the front door. A dedup gate (the ingest log) drops anything already captured, then the input is routed by type to one of three fetchers: `yt-dlp` captions with a local Whisper fallback for YouTube, a Playwright render into `trafilatura` for webpages, or a direct read for local files. Each returns clean text; YouTube also returns timed segments and chapters.
 
-    DISPATCH --> EXT
-    DISPATCH --> ENR
+### 2. Decompose, place, and dispatch
 
-    subgraph EXT["extractor subagent · sonnet"]
-        direction TB
-        DRAFT["draft the note from the source<br/>Feynman-plain voice"]
-        DRAFT --> CUES["find the visual-cue moments in the text"]
-        CUES --> SEL["select_keyframes<br/>ffmpeg mpdecimate → blur filter → dHash dedup + settled frame → montage"]
-        SEL --> PICK["Read the montage, pick the best frame"]
-        PICK --> KEEP["keep_frame → Attachments/frames/&lt;video_id&gt;/<br/>skips perceptual duplicates"]
-        KEEP --> SS1["check_slop (self-screen)"]
-    end
+![Decompose, place, and dispatch](docs/architecture-2-decompose.svg)
 
-    subgraph ENR["enricher subagent · sonnet"]
-        direction TB
-        WEB["WebSearch / WebFetch"] --> CITE["cited additions<br/>a source URL on every claim"]
-    end
+The orchestrator reads the source once and splits it into distinct topics (using chapters or headings as anchors), each with a title, scope, and source slice. For every topic it checks the existing categories and searches the vault to choose between a new note and a dated merge, decides whether the source is visual enough to pull frames (preparing one downscaled video if so), then dispatches the topics to run in parallel.
 
-    EXT --> INT["orchestrator integrates<br/>note + citations → one note"]
-    ENR --> INT
-    INT --> SCREEN["check_slop on the final note"]
-    SCREEN --> WRITE["vault_write<br/>OKF frontmatter · non-destructive · atomic read-back · updates MOC + index"]
-    WRITE --> REC["record in the ingest log<br/>path recovered from notes.source"]
-    REC --> STORE[("Obsidian vault<br/>Notes/&lt;Category&gt;/*.md · Attachments/frames · Postgres/pgvector")]
-```
+### 3. The two workers
 
-The orchestrator keeps a lean context and delegates the bulky per-topic work to workers that each run in an isolated context and in parallel — so a multi-topic source doesn't crawl through one giant sequential run. It's built on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/python); the tools it calls (transcript fetch, vault search, frame extraction, note writing) run **in-process**.
+![Extractor and enricher workers](docs/architecture-3-workers.svg)
+
+Each topic runs two workers in isolated contexts. The **extractor** drafts the note from its slice in a Feynman-plain voice, self-screens with `check_slop`, and for visual sources pulls frames: it finds visual-cue moments, calls `select_keyframes` (ffmpeg samples candidates, then a local blur filter and perceptual dedup lay them out as a contact sheet), picks the useful ones, and calls `keep_frame`. The **enricher** runs WebSearch/WebFetch to add externally-cited claims. Frames are best-effort: if any step fails, the note is still written from the transcript.
+
+### 4. Integrate and persist
+
+![Integrate and persist](docs/architecture-4-persist.svg)
+
+The orchestrator folds the enricher's citations into a single note, runs a final `check_slop` pass, and writes it. Writes are non-destructive (new notes never overwrite; updates append a dated section), carry deterministic OKF frontmatter, link into the category MOC, and upsert into Postgres/`pgvector`. The ingest log records what was written.
+
+<sup>Diagram sources: [`docs/architecture-1-ingest.excalidraw`](docs/architecture-1-ingest.excalidraw) · [`-2-decompose`](docs/architecture-2-decompose.excalidraw) · [`-3-workers`](docs/architecture-3-workers.excalidraw) · [`-4-persist`](docs/architecture-4-persist.excalidraw). Export each to the matching `.svg`.</sup>
 
 ## Requirements
 
 - **macOS on Apple Silicon** (the BGE-M3 embedding model uses Apple's MPS/GPU).
 - **Python 3.12+** and [`uv`](https://docs.astral.sh/uv/).
 - **[Claude Code](https://claude.com/claude-code)**, installed and authenticated — the agent run rides that auth (no API key needed).
-- **Docker** (via [Colima](https://github.com/abiosoft/colima) — no Docker Desktop required) for PostgreSQL + `pgvector` and for `ffmpeg`.
+- **Docker**, served by a lima-based daemon that bind-mounts `$HOME` — [Colima](https://github.com/abiosoft/colima) or [Rancher Desktop](https://rancherdesktop.io/) both work (Docker Desktop works too if `$HOME` file-sharing is enabled). Used for PostgreSQL + `pgvector` and for `ffmpeg`.
 
 ## Setup
 
@@ -106,7 +85,7 @@ git clone https://github.com/8ballbb/study-notes && cd study-notes
 ./scripts/doctor.sh
 ```
 
-**Then set it all up with one command** — it prints its plan, asks once, then installs/starts only what's missing (Homebrew deps, Colima, the database + ffmpeg image, Python deps, Chromium) and finishes by re-running the doctor:
+**Then set it all up with one command** — it prints its plan, asks once, then installs/starts only what's missing (Homebrew deps, a Docker daemon — reusing Colima/Rancher Desktop if already running — the database + ffmpeg image, Python deps, Chromium) and finishes by re-running the doctor:
 
 ```bash
 make setup          # or: ./scripts/setup.sh
@@ -115,20 +94,22 @@ make setup          # or: ./scripts/setup.sh
 <details><summary>Or do it by hand (what <code>make setup</code> runs)</summary>
 
 ```bash
-# 1. Docker runtime (no Docker Desktop needed) + the database + the ffmpeg image
-brew install colima docker docker-compose
-colima start
+# 1. Docker runtime — any lima-based daemon that bind-mounts $HOME.
+#    If Rancher Desktop (or Colima) is already running, skip the next two lines.
+brew install colima docker docker-compose     # only if you have no Docker daemon yet
+colima start                                   # or just launch Rancher Desktop instead
 docker compose up -d                          # Postgres 17 + pgvector (container: study_notes_db)
 docker pull jrottenberg/ffmpeg:6.1-alpine     # frame extraction
 
 # 2. The Python tool
-uv venv && uv pip install -e ".[dev]"
+uv sync --group dev
 uv run playwright install chromium            # for webpage ingestion (JS-heavy pages, screenshots)
 
-# 3. Point config.toml at your Obsidian vault — a folder UNDER your home directory
-#    (Colima only bind-mounts $HOME, so the vault must live there)
+# 3. Point config.toml at your Obsidian vault. The tracked config.toml ships with
+#    vault_path = "REPLACE_ME" — set it to an ABSOLUTE path UNDER $HOME (the Docker VM
+#    only bind-mounts $HOME, and the app does NOT expand ~).
 mkdir -p "$HOME/vault"                         # then set in config.toml:
-#    vault_path = "/Users/you/vault"
+#    vault_path = "/Users/you/vault"           # <- your real home dir, not the literal "you"
 
 # 4. Verify — should be all [ok]
 ./scripts/doctor.sh
@@ -162,8 +143,23 @@ uv run study-notes add https://youtu.be/<id> --note "Existing Note Title"
 # Preview the plan without writing anything
 uv run study-notes add https://youtu.be/<id> --dry-run
 
+# Plan interactively (ask questions, confirm each note before writing)
+uv run study-notes add https://youtu.be/<id> --interactive
+
+# Capture only one part of a source (locates it, confirms the range, then extracts)
+uv run study-notes add https://youtu.be/<id> --only "the section on backpressure"
+
 # Re-ingest something already seen
 uv run study-notes add https://youtu.be/<id> --force
+
+# Ask a question, answered from your vault notes (read-only, grounded + cited)
+uv run study-notes query "how does Raft handle leader election?" --k 8
+
+# Interactively improve an existing note from your feedback
+uv run study-notes refine "Notes/Distributed Systems/Raft.md"
+
+# Rebuild every note's managed '## Related' wikilink section, vault-wide
+uv run study-notes link
 
 # Rebuild the search index from the current vault
 uv run study-notes reindex
@@ -171,10 +167,10 @@ uv run study-notes reindex
 
 ## Configuration
 
-`config.toml` at the repo root:
+`config.toml` at the repo root. It is tracked in git and ships with `vault_path = "REPLACE_ME"` — you **must** edit that to an absolute path under `$HOME` before the first run (the app does not expand `~`, and the doctor/setup will refuse to proceed while it is still the placeholder). Your local edit is expected to show as an uncommitted change; don't commit your machine-specific path back.
 
 ```toml
-vault_path = "/Users/you/vault"
+vault_path = "/Users/you/vault"        # absolute, under $HOME (edit the shipped REPLACE_ME)
 notes_root = "Notes"                   # categories are folders under here
 attachments_dir = "Attachments"
 frames_subdir = "frames"
@@ -189,12 +185,17 @@ model = "BAAI/bge-m3"                   # local, dense + sparse, on MPS
 orchestrator = "claude-opus-4-8"       # decompose / judge / integrate
 extractor    = "claude-sonnet-5"       # per-topic note writing
 enricher     = "claude-sonnet-5"       # per-topic web research
+query        = "claude-opus-4-8"       # read-only synthesis for `query` (defaults to orchestrator)
 
 [prompts]                              # versioned, editable
 orchestrator = "prompts/orchestrator.md"
 note_writing = "prompts/note-writing.md"   # how notes are written — tune "how I learn" (and the voice) here
 enrichment   = "prompts/enrichment.md"
 anti_slop    = "prompts/anti-slop.md"       # bans AI-filler phrasing
+query               = "prompts/query.md"                 # read-only `query` synthesis
+refine              = "prompts/refine.md"                 # interactive `refine` session
+interactive_capture = "prompts/interactive-capture.md"   # `add --interactive`
+partial_capture     = "prompts/partial-capture.md"       # `add --only`
 
 [frames]
 budget = 4                             # candidate frames per visual moment (montage the model picks from)
@@ -249,7 +250,7 @@ The design and build history live under [`docs/superpowers/`](docs/superpowers/)
 
 ```bash
 uv run pytest -m "not slow and not docker and not e2e"   # fast, token-free suite (~3.5s)
-uv run pytest -m docker                                   # frame tests (needs Colima + ffmpeg image)
+uv run pytest -m docker                                   # frame tests (needs a Docker daemon + ffmpeg image)
 uv run pytest -m e2e                                      # real end-to-end agentic run — SPENDS Claude tokens
 ```
 
@@ -265,7 +266,7 @@ specs and plans under [`docs/superpowers/`](docs/superpowers/).
 
 > **Occasional retry:** an ingest sometimes ends with `Claude Code returned an error result: success`
 > — a transient SDK teardown error, not a failed ingest. Re-run it; a failed *real* run isn't recorded,
-> so the retry proceeds fresh. (Tracked in `CLAUDE.md` → Known issues.)
+> so the retry proceeds fresh.
 
 ## Roadmap
 

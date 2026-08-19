@@ -4,8 +4,8 @@ from datetime import date
 from pathlib import Path
 
 from study_notes.config import Config
-from study_notes.models import Note, Topic
-from study_notes.renderer import _yaml_scalar, render_note, render_update_section
+from study_notes.models import Note, Provenance
+from study_notes.renderer import _yaml_scalar
 from study_notes.vault_index import VaultIndex
 
 
@@ -22,7 +22,7 @@ def _split_frontmatter(md: str) -> tuple[dict, str]:
                 if ":" in line:
                     k, _, v = line.partition(":")
                     fm[k.strip()] = v.strip()
-            return fm, "\n".join(lines[i + 1:]).lstrip("\n")
+            return fm, "\n".join(lines[i + 1 :]).lstrip("\n")
     return {}, md
 
 
@@ -42,8 +42,9 @@ def _derive_description(body: str) -> str:
     return ""
 
 
-def okf_note_frontmatter(title: str, category: str, provenance,
-                         description: str, tags: list[str]) -> str:
+def okf_note_frontmatter(
+    title: str, category: str, provenance, description: str, tags: list[str]
+) -> str:
     """Canonical OKF-aligned frontmatter for a study note. `type` is the only field
     OKF requires; `resource`/`tags`/`description`/`title` are its recommended fields;
     `category`/`source_type`/`source_date` are project-specific provenance we keep."""
@@ -115,7 +116,7 @@ class VaultWriter:
         if not moc.exists():
             _atomic_write(
                 moc,
-                f"---\ntype: moc\ncategory: {category}\ndescription: \"\"\n---\n\n"
+                f'---\ntype: moc\ncategory: {category}\ndescription: ""\n---\n\n'
                 f"# {category}\n\n## Notes\n",
             )
         self.index.upsert_category(category)
@@ -127,30 +128,7 @@ class VaultWriter:
         if link not in text:
             _atomic_write(moc, text.rstrip() + f"\n{link}\n")
 
-    def _upsert(self, path: str, topic: Topic, category: str, body: str) -> None:
-        self.index.upsert_note(Note(
-            path=path, title=topic.title, category=category,
-            content=body, provenance=topic.provenance,
-        ))
-
-    def write_new(self, topic: Topic, category: str,
-                  frame_paths: dict[int, str] | None = None) -> str:
-        self._validate_category(category)
-        self._ensure_category(category)
-        path = self.note_path(category, topic.title)
-        abs_path = self._abs_within_vault(path)
-        if abs_path.exists():
-            raise VaultWriteConflict(path)
-        markdown = render_note(topic, category=category, frame_paths=frame_paths)
-        _atomic_write(abs_path, markdown)
-        self._add_moc_link(category, abs_path.stem)
-        self._upsert(path, topic, category, markdown)
-        if abs_path.read_text() != markdown:
-            raise VaultWriteError(f"read-back verification failed for {path}")
-        return path
-
-    def write_markdown(self, title: str, category: str, markdown: str,
-                       provenance) -> str:
+    def write_markdown(self, title: str, category: str, markdown: str, provenance) -> str:
         self._validate_category(category)
         self._ensure_category(category)
         path = self.note_path(category, title)
@@ -169,23 +147,50 @@ class VaultWriter:
         final = f"{fm}\n\n{body}\n" if body else f"{fm}\n"
         _atomic_write(abs_path, final)
         self._add_moc_link(category, abs_path.stem)
-        self.index.upsert_note(Note(path=path, title=title, category=category,
-                                    content=final, provenance=provenance))
+        self.index.upsert_note(
+            Note(path=path, title=title, category=category, content=final, provenance=provenance)
+        )
         if abs_path.read_text() != final:
             raise VaultWriteError(f"read-back verification failed for {path}")
         return path
 
-    def write_merge(self, target_path: str, topic: Topic, on: date,
-                    frame_paths: dict[int, str] | None = None) -> str:
-        abs_path = self._abs_within_vault(target_path)
+    def rewrite_markdown(self, path: str, new_body: str) -> str:
+        """Rewrite an existing note's BODY in place, preserving its OKF frontmatter and
+        provenance. Title/category are NOT changed — a rename would orphan the old file
+        (there is no delete primitive), so a title change is rejected."""
+        from study_notes.reindex import parse_frontmatter  # deferred: avoid circular import
+
+        abs_path = self._abs_within_vault(path)
         if not abs_path.exists():
-            raise FileNotFoundError(target_path)
-        existing = abs_path.read_text()
-        section = render_update_section(topic, on=on, frame_paths=frame_paths)
-        merged = existing.rstrip() + f"\n\n{section}"
-        _atomic_write(abs_path, merged)
-        category = Path(target_path).parent.name
-        self._upsert(target_path, topic, category, merged)
-        if abs_path.read_text() != merged:
-            raise VaultWriteError(f"read-back verification failed for {target_path}")
-        return target_path
+            raise FileNotFoundError(path)
+        fm = parse_frontmatter(abs_path.read_text())
+        title = fm["title"]
+        category = fm.get("category") or Path(path).parent.name
+        if slug(title) != Path(path).stem:
+            raise VaultWriteError(
+                f"cannot rewrite {path!r}: title {title!r} no longer matches the filename "
+                "(refine cannot rename a note)"
+            )
+        # Preserve description + tags verbatim from the old note (they live ONLY in the
+        # file — no DB columns — so a rebuild that drops them is unrecoverable).
+        description = fm.get("description") or ""
+        tags = _parse_tags(fm.get("tags"))
+        prov = Provenance(
+            origin=fm.get("resource") or fm.get("source") or "",
+            input_type=fm.get("source_type") or "",
+            # mirror reindex: degrade a missing/empty timestamp to today instead of raising
+            captured_at=(
+                date.fromisoformat(fm["timestamp"]) if fm.get("timestamp") else date.today()
+            ),
+            source_date=date.fromisoformat(fm["source_date"]) if fm.get("source_date") else None,
+        )
+        _, body = _split_frontmatter(new_body)  # drop any frontmatter the model tacked on
+        fm_block = okf_note_frontmatter(title, category, prov, description, tags)
+        final = f"{fm_block}\n\n{body}\n" if body else f"{fm_block}\n"
+        _atomic_write(abs_path, final)
+        self.index.upsert_note(
+            Note(path=path, title=title, category=category, content=final, provenance=prov)
+        )  # full text, not new_body
+        if abs_path.read_text() != final:
+            raise VaultWriteError(f"read-back verification failed for {path}")
+        return path

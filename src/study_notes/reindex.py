@@ -20,7 +20,7 @@ def parse_frontmatter(md: str) -> dict:
         key, _, val = line.partition(":")
         v = val.strip()
         if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
-            v = v[1:-1].replace('\\"', '"').replace('\\\\', '\\')
+            v = v[1:-1].replace('\\"', '"').replace("\\\\", "\\")
         out[key.strip()] = v
     return out
 
@@ -39,8 +39,15 @@ def _rebuild_moc(moc_path: Path, category: str, note_stems: list[str]) -> None:
     if moc_path.exists():
         description = parse_frontmatter(moc_path.read_text()).get("description", "")
     lines = [
-        "---", "type: moc", f"category: {category}",
-        f'description: "{description}"', "---", "", f"# {category}", "", "## Notes",
+        "---",
+        "type: moc",
+        f"category: {category}",
+        f'description: "{description}"',
+        "---",
+        "",
+        f"# {category}",
+        "",
+        "## Notes",
     ]
     lines += [f"- [[{stem}]]" for stem in sorted(note_stems)]
     _atomic_write(moc_path, "\n".join(lines) + "\n")
@@ -66,13 +73,19 @@ def reindex(config: Config, index: VaultIndex) -> int:
             captured_at=_date(fm.get("timestamp") or fm.get("captured_at")) or date.today(),
             source_date=_date(fm.get("source_date")),
         )
-        index.upsert_note(Note(path=rel, title=fm.get("title", md_path.stem),
-                               category=category, content=text, provenance=prov))
+        index.upsert_note(
+            Note(
+                path=rel,
+                title=fm.get("title", md_path.stem),
+                category=category,
+                content=text,
+                provenance=prov,
+            )
+        )
         moc_notes.setdefault(md_path.parent.name, []).append(md_path.stem)
         count += 1
 
     # Rebuild every category's index note from truth (prunes stale links).
     for cat_dir in sorted(p for p in root.glob("*") if p.is_dir()):
-        _rebuild_moc(cat_dir / f"{cat_dir.name}.md", cat_dir.name,
-                     moc_notes.get(cat_dir.name, []))
+        _rebuild_moc(cat_dir / f"{cat_dir.name}.md", cat_dir.name, moc_notes.get(cat_dir.name, []))
     return count

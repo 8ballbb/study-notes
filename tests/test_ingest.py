@@ -29,15 +29,20 @@ def test_webpage_source_id_keeps_meaningful_query_params():
 
 
 def test_webpage_source_id_strips_all_known_tracking_params():
-    url = ("https://example.com/article"
-           "?utm_source=x&fbclid=1&gclid=2&mc_eid=3&ref=4&ref_src=5&keep=yes")
+    url = (
+        "https://example.com/article"
+        "?utm_source=x&fbclid=1&gclid=2&mc_eid=3&ref=4&ref_src=5&keep=yes"
+    )
     assert webpage_source_id(url) == "url:https://example.com/article?keep=yes"
 
 
-@pytest.mark.parametrize("url", [
-    "ftp://example.com/file.txt",
-    "mailto:someone@example.com",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "ftp://example.com/file.txt",
+        "mailto:someone@example.com",
+    ],
+)
 def test_webpage_source_id_rejects_non_http_schemes(url):
     with pytest.raises(SourceIdentityError):
         webpage_source_id(url)
