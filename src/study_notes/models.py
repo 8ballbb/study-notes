@@ -11,33 +11,9 @@ class Provenance:
 
 
 @dataclass
-class Card:
-    question: str
-    answer: str
-    cloze: bool = False
-    timestamp: str | None = None
-
-
-@dataclass
-class Topic:
-    title: str
-    tags: list[str]
-    summary: list[str]
-    cards: list[Card]
-    provenance: Provenance
-
-
-@dataclass
 class Category:
     name: str
     description: str = ""
-
-
-@dataclass
-class Placement:
-    category: Category
-    action: str  # "new_note" | "merge"
-    target_note: str | None = None
 
 
 @dataclass
